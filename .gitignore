@@ -1,0 +1,83 @@
+# ── Movies by invokeil — .gitignore ─────────────────────────────────────
+# NEVER commit credentials: API keys, tokens, .env files, .dev.vars.
+# Provision Worker secrets with `wrangler secret put` instead — see SECURITY.md.
+
+# dependencies
+node_modules/
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js build output
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
+dev.log
+dev.out.log
+server.log
+
+# env files & credentials — ABSOLUTELY NEVER COMMIT
+.env
+.env.*
+!.env.example
+.dev.vars
+worker/.dev.vars
+.env.cloudflare
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# wrangler local state (KV/Cache/D1 dev data)
+.wrangler/
+worker/.wrangler/
+
+# local tooling & scratch
+local-*
+.claude
+.z-ai-config
+.zscripts
+prompt
+test
+
+# sandbox / workspace artifacts (not part of the app)
+/download/
+/tool-results/
+/agent-ctx/
+/scripts/
+/mini-services/
+/examples/
+/tests/
+/db/
+/upload/
+/assets/
+/Caddyfile
+/README-SOURCE.md
+/worklog.md
+/repo-staging/

@@ -1,0 +1,46 @@
+// ── Movies by invokeil — Worker deploy config ──────────────────────────────
+// Deploy:  cd worker && ./deploy.sh   (or: bunx wrangler deploy)
+// Credentials: the deploy script reads CLOUDFLARE_API_TOKEN and
+//              CLOUDFLARE_ACCOUNT_ID from ../.env.cloudflare (git-ignored).
+// Secrets: bunx wrangler secret put TMDB_API_TOKEN    (v4 read token)
+//          bunx wrangler secret put OMDB_API_KEY
+//          bunx wrangler secret put GEMINI_API_KEY
+//          bunx wrangler secret put GROQ_API_KEY
+//          bunx wrangler secret put TMDB_DEMO_KEY     (optional v3 fallback)
+
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "invokeil-movies-api",
+  "main": "src/worker.ts",
+  "compatibility_date": "2025-01-01",
+  // NOTE: account_id intentionally NOT committed (kept out of source control).
+  // It is injected at deploy time from the CLOUDFLARE_ACCOUNT_ID env var —
+  // see ../.env.cloudflare (git-ignored) or export it in your shell.
+  "observability": { "enabled": true },
+  "workers_dev": true,
+  "preview_urls": true,
+
+  /* Workers AI — final AI tier inside the chain (Gemini → Groq → Workers AI
+     → local). Runs on Cloudflare's own GPUs; no external key needed.       */
+  "ai": { "binding": "AI" },
+
+  /* Static assets — serves the SPA exported to ../out (next build with
+     output: 'export'). Unknown paths fall back to index.html (SPA routing);
+     the Worker fetch handler routes non-/api traffic to this binding. */
+  "assets": { "directory": "../out", "binding": "ASSETS", "not_found_handling": "single-page-application" },
+
+  /* Custom domain (zone must exist in the Cloudflare account) */
+  "routes": [ { "pattern": "movies.invokeil.cfd", "custom_domain": true } ],
+
+  /* Persistent metadata cache (KV) — every /api/media response is stored
+     here after first load and served globally from CF storage.            */
+  "kv_namespaces": [
+    { "binding": "CACHE", "id": "6097092133c6404a85c2a0b1ea89e315" }
+  ],
+
+  /* Image store (R2) — every poster/backdrop/cast photo fetched once via
+     /api/img is persisted here and served from CF forever after.          */
+  "r2_buckets": [
+    { "binding": "IMAGES", "bucket_name": "invokeil-images" }
+  ],
+}

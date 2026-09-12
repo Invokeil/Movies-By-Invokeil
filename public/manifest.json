@@ -1,0 +1,24 @@
+{
+  "name": "Movies by invokeil",
+  "short_name": "invokeil",
+  "description": "No-login, privacy-first, local-first movie discovery + streaming interface. Glassmorphism UI.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#D8E2DC",
+  "theme_color": "#F4ACB7",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

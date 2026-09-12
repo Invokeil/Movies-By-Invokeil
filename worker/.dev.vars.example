@@ -1,0 +1,21 @@
+# ── Movies by invokeil — local Worker dev secrets template ──────────────
+# Copy to `worker/.dev.vars` for `wrangler dev` (NEVER commit .dev.vars).
+# In production, provision these with `wrangler secret put <NAME>` instead.
+
+# TMDB v4 Read Access Token (recommended — Bearer auth)
+TMDB_API_TOKEN=""
+
+# Optional: TMDB v3 api_key fallback used only when no token is set
+TMDB_DEMO_KEY=""
+
+# OMDb API key (https://www.omdbapi.com/apikey.aspx)
+OMDB_API_KEY=""
+
+# Google AI Studio key (Gemini tier of the AI chain)
+GEMINI_API_KEY=""
+
+# Groq console key (Groq tier of the AI chain)
+GROQ_API_KEY=""
+
+# CORS allow-origin for the API (default "*")
+# ALLOWED_ORIGIN="https://movies.invokeil.cfd"
