@@ -41,37 +41,71 @@ export function SearchView({ initialQuery = '' }: { initialQuery?: string }) {
     setLoading(true)
     try {
       const { buildTasteProfile, aiStore } = await import('@/lib/db/stores')
-      const cacheKey = `nlsearch:${q.toLowerCase()}`
-      let data: { results?: { id: string; reason?: string }[] } | null = prefs.enableAI
-        ? (await aiStore.get(cacheKey)) as typeof data
-        : null
+      /* v2 prefix invalidates poisoned payloads cached by older builds;
+         entries are { at, data } so we can expire stale ones */
+      const cacheKey = `v2:nlsearch:${q.toLowerCase()}`
+      type AiPayload = { results?: { id?: string; reason?: string }[] }
+      let data: AiPayload | null = null
 
-      if (!data) {
-        const profile = prefs.personalization ? await buildTasteProfile() : {}
-        const res = await fetch(`${API_BASE}/api/ai`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mode: 'nlsearch', query: q, profile }),
-        })
-        const j = await res.json()
-        if (!j.ok || !j.results?.length) throw new Error(j.error ?? 'ai unavailable')
-        data = j
-        aiStore.put(cacheKey, j)
+      if (prefs.enableAI) {
+        try {
+          const raw = (await aiStore.get(cacheKey)) as { at?: number; data?: AiPayload } | AiPayload | null
+          const wrapped = raw && typeof raw === 'object' && 'data' in (raw as object) ? (raw as { at?: number; data?: AiPayload }) : null
+          const cand = wrapped ? wrapped.data : (raw as AiPayload | null)
+          if (cand && Array.isArray(cand.results) && cand.results.length > 0) {
+            const fresh = !wrapped || !wrapped.at || Date.now() - wrapped.at < 86_400_000 // 24 h
+            if (fresh) data = cand
+          }
+        } catch { /* cache read failure → live fetch */ }
       }
 
-      const ids = data?.results?.map((r) => r.id) ?? []
-      const detailed = await Promise.all(ids.map((id) => mediaService.detail(id)))
-      const items = detailed.filter(Boolean) as UnifiedMedia[]
+      if (!data) {
+        let profile: Record<string, unknown> = {}
+        if (prefs.personalization) {
+          try { profile = await buildTasteProfile() } catch { profile = {} } // profile must never kill AI mode
+        }
+        const ctrl = new AbortController()
+        const timer = setTimeout(() => ctrl.abort(), 30_000) // hard ceiling — no infinite spinners
+        try {
+          const res = await fetch(`${API_BASE}/api/ai`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'nlsearch', query: q, profile }),
+            signal: ctrl.signal,
+          })
+          const j = (await res.json()) as AiPayload & { ok?: boolean; error?: string }
+          if (!j.ok || !j.results?.length) throw new Error(j.error ?? 'ai unavailable')
+          data = j
+          if (prefs.enableAI) {
+            try { aiStore.put(cacheKey, { at: Date.now(), data: j }) } catch { /* best-effort */ }
+          }
+        } finally {
+          clearTimeout(timer)
+        }
+      }
+
+      const ids = (data?.results ?? []).map((r) => String(r.id ?? '')).filter(Boolean)
+      /* per-id isolation: one bad/unreleased title can't kill the batch */
+      const settled = await Promise.allSettled(ids.map((id) => mediaService.detail(id)))
+      const items = settled
+        .map((s) => (s.status === 'fulfilled' ? s.value : null))
+        .filter(Boolean) as UnifiedMedia[]
+      if (items.length === 0) throw new Error('no resolvable results')
+
       setResults(items)
-      setAiReasons(Object.fromEntries((data?.results ?? []).map((r) => [r.id, r.reason ?? ''])))
+      setAiReasons(
+        Object.fromEntries(
+          (data?.results ?? []).map((r) => [String(r.id ?? ''), r.reason ?? '']),
+        ),
+      )
       searchStore.add(q)
       searchStore.recent().then(setRecent)
-      if (items.length === 0) toast('No matches found — try different words')
     } catch {
       toast.error('AI search unavailable — falling back to keyword search')
       setAiMode(false)
       const kw = await mediaService.search(q)
       setResults(kw)
+      if (kw.length === 0) toast('No matches found — try different words')
     } finally {
       setAiLoading(false)
       setLoading(false)

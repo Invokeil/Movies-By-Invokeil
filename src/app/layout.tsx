@@ -3,21 +3,37 @@ import "./globals.css";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
-  title: "Movies by invokeil — Discover. Watch. Repeat.",
+  metadataBase: new URL("https://movies.invokeil.cfd"),
+  title: {
+    default: "Movies by InvokeIL — Discover Movies, TV Series & Anime",
+    template: "%s | Movies by InvokeIL",
+  },
   description:
-    "No-login, privacy-first, local-first movie discovery + streaming interface. Liquid Glass UI, local taste profile, AI-augmented recommendations.",
-  keywords: ["movies", "streaming", "TMDB", "glassmorphism", "InvokeIL", "local-first"],
+    "Browse movies, TV series and anime by genre, cast, release year and rating — with story info, runtimes, cast lists and legal streaming availability on every title page.",
+  applicationName: "Movies by InvokeIL",
   authors: [{ name: "InvokeIL" }],
   manifest: "/manifest.json",
+  alternates: { canonical: "/" },
   icons: {
     icon: "/icon.svg",
     apple: "/icon.svg",
   },
   openGraph: {
-    title: "Movies by invokeil",
-    description: "Privacy-first movie discovery with a Liquid Glass interface.",
+    title: "Movies by InvokeIL — Discover Movies, TV Series & Anime",
+    description:
+      "Browse movies, TV series and anime by genre, cast, release year and rating — with story info, runtimes and cast lists on every title page.",
+    url: "/",
+    siteName: "Movies by InvokeIL",
     type: "website",
+    locale: "en_US",
   },
+  twitter: {
+    card: "summary",
+    title: "Movies by InvokeIL — Discover Movies, TV Series & Anime",
+    description:
+      "Browse movies, TV series and anime by genre, cast, release year and rating.",
+  },
+  robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {

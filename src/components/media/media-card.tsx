@@ -43,15 +43,18 @@ export function MediaCard({ media, className, index = 0 }: { media: UnifiedMedia
     if (added) toast(`Loved "${media.title}" — tuning your recommendations`)
   }
 
+  const href = `/${media.mediaType === 'tv' ? 'tv' : 'movie'}/${media.tmdbId}`
+
   return (
-    <article
-      className={cn('group anim-rise relative w-40 shrink-0 cursor-pointer md:w-44', className)}
+    <a
+      href={href}
+      className={cn('group anim-rise relative block w-40 shrink-0 cursor-pointer md:w-44', className)}
       style={{ animationDelay: `${Math.min(index * 40, 400)}ms` }}
-      onClick={() => navigate({ name: 'detail', id: media.id })}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && navigate({ name: 'detail', id: media.id })}
-      aria-label={`${media.title} (${media.year})`}
+      onClick={(e) => {
+        e.preventDefault() // crawler-visible href; humans get instant SPA nav
+        navigate({ name: 'detail', id: media.id })
+      }}
+      aria-label={`${media.title} (${media.year || 'Unknown'})`}
     >
       <div className="glass glass-hover relative overflow-hidden rounded-2xl">
         <SmartPoster media={media} className="aspect-[2/3] w-full" />
@@ -101,9 +104,9 @@ export function MediaCard({ media, className, index = 0 }: { media: UnifiedMedia
 
       <div className="px-1 pt-2">
         <h3 className="truncate text-sm font-bold text-ink">{media.title}</h3>
-        <p className="text-xs text-mauve">{media.year} · {media.genres.slice(0, 2).join(' · ')}</p>
+        <p className="text-xs text-mauve">{media.year || 'Unknown'} · {media.genres.slice(0, 2).join(' · ')}</p>
       </div>
-    </article>
+    </a>
   )
 }
 

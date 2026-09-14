@@ -129,7 +129,8 @@ export function RatingBadge({ rating, className }: { rating: number; className?:
       <svg width="11" height="11" viewBox="0 0 24 24" fill="#F4ACB7" stroke="#9D8189" strokeWidth="1.4">
         <path d="M12 2l2.9 6.26L21.5 9.3l-4.75 4.4 1.15 6.8L12 17.2l-5.9 3.3 1.15-6.8L2.5 9.3l6.6-1.04L12 2z" />
       </svg>
-      {rating.toFixed(1)}
+      {/* audit rule: missing ratings show "NR" — never a fake 0.0 */}
+      {rating > 0 ? rating.toFixed(1) : 'NR'}
     </span>
   )
 }

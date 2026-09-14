@@ -1,8 +1,24 @@
+# Movies by InvokeIL — robots.txt
+# Sitemap declaration for search engines
+
+Sitemap: https://movies.invokeil.cfd/sitemap.xml
+
+# Crawlable: home, /movie/{id}, /tv/{id}, /genre/{slug} collection pages
+# Not indexed (thin/utility): search, library, settings, watch sessions, API
+
 User-agent: Googlebot
 Allow: /
+Disallow: /watch
+Disallow: /library
+Disallow: /settings
+Disallow: /api
 
 User-agent: Bingbot
 Allow: /
+Disallow: /watch
+Disallow: /library
+Disallow: /settings
+Disallow: /api
 
 User-agent: Twitterbot
 Allow: /
@@ -12,3 +28,7 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /watch
+Disallow: /library
+Disallow: /settings
+Disallow: /api

@@ -138,7 +138,7 @@ export function DetailView({ id }: { id: string }) {
               <RatingBadge rating={media.voteAverage} />
               {media.imdbRating && <span className="glass rounded-full px-2.5 py-0.5 text-xs font-bold">IMDb {media.imdbRating}</span>}
               {media.metascore && <span className="glass rounded-full px-2.5 py-0.5 text-xs font-bold">Metascore {media.metascore}</span>}
-              <span className="flex items-center gap-1"><Calendar size={13} className="text-mauve" />{media.year}</span>
+              <span className="flex items-center gap-1"><Calendar size={13} className="text-mauve" />{media.year || 'Unknown'}</span>
               {media.runtime && <span className="flex items-center gap-1"><Clock size={13} className="text-mauve" />{formatRuntime(media.runtime)}</span>}
               <span className="flex items-center gap-1"><Globe size={13} className="text-mauve" />{media.originalLanguage.toUpperCase()}</span>
             </div>
@@ -196,11 +196,11 @@ export function DetailView({ id }: { id: string }) {
           <h2 className="mb-3 text-lg font-bold text-ink">Ratings & Info</h2>
           <dl className="flex flex-col gap-3 text-sm">
             <InfoRow label="Director / Creator" value={media.director ?? '—'} />
-            <InfoRow label="TMDB Score" value={`${media.voteAverage.toFixed(1)} (${media.voteCount.toLocaleString()} votes)`} />
+            <InfoRow label="TMDB Score" value={media.voteAverage > 0 ? `${media.voteAverage.toFixed(1)} (${media.voteCount.toLocaleString()} votes)` : 'Unknown'} />
             {media.imdbRating && <InfoRow label="IMDb" value={`${media.imdbRating} / 10`} icon={<Star size={13} className="text-rose" />} />}
             {media.metascore && <InfoRow label="Metascore" value={String(media.metascore)} />}
             {media.boxOffice && <InfoRow label="Box Office" value={media.boxOffice} />}
-            <InfoRow label="Release Date" value={media.releaseDate} />
+            <InfoRow label="Release Date" value={media.releaseDate || 'Unknown'} />
             <InfoRow label="Primary ID" value={`TMDB ${media.tmdbId}${media.malId ? ` · MAL ${media.malId}` : ''}`} />
           </dl>
           <div className="glass-subtle mt-4 rounded-xl p-3 text-[11px] leading-relaxed text-mauve">

@@ -549,18 +549,59 @@ async function handleSearch(env: Env, sp: URLSearchParams): Promise<Response> {
   const q = (sp.get('q') ?? '').trim()
   if (!q) return respond(env, { results: [] }, 200, 'MISS')
 
-  const { items, cache } = await fetchResults(
+  /* Intent parsing: extract a release year ("inception 2010") so exact
+     title+year queries resolve first instead of multi-search failing. */
+  const yearM = /\b((?:18|19|20)\d{2})\b/.exec(q)
+  const qYear = yearM ? parseInt(yearM[1], 10) : 0
+  const qText = qYear ? (q.replace(yearM![0], ' ').replace(/\s+/g, ' ').trim() || q) : q
+
+  let { items, cache } = await fetchResults(
     env,
-    buildUpstream(env, '/search/multi', { query: q.slice(0, 200), include_adult: 'false' }),
+    buildUpstream(env, '/search/multi', { query: qText.slice(0, 200), include_adult: 'false' }),
     TTL_SEARCH,
   )
+  /* full query (with year) retry when the stripped form found nothing */
+  if (items.length === 0 && qText !== q) {
+    const retry = await fetchResults(
+      env,
+      buildUpstream(env, '/search/multi', { query: q.slice(0, 200), include_adult: 'false' }),
+      TTL_SEARCH,
+    )
+    items = retry.items
+    cache = retry.cache
+  }
 
-  const results: UnifiedMedia[] = []
+  /* map → relevance-score → filter unrelated → rank */
+  const norm = (s: unknown) =>
+    String(s ?? '').toLowerCase().replace(/\(\d{4}\)/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+  const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const qN = norm(qText)
+  const qTokens = qN.split(' ').filter(Boolean)
+  const results: { m: UnifiedMedia; s: number }[] = []
   for (const it of items) {
     if (it.media_type !== 'movie' && it.media_type !== 'tv') continue // drop persons
-    results.push(slim(mapUnified(it, it.media_type, false)))
+    const m = slim(mapUnified(it, it.media_type, false))
+    const tN = norm(m.title)
+    const oN = norm(m.originalTitle)
+    /* explicit year + known result year that disagrees → unrelated, drop */
+    if (qYear && m.year > 0 && m.year !== qYear && !(qN === tN || qN === oN)) continue
+    if (!qN && !tN) continue
+    let s = 0
+    if (tN === qN || oN === qN) s = 1000 // exact title
+    else if (tN.startsWith(qN) || oN.startsWith(qN)) s = 600
+    else if (new RegExp(`\\b${escRe(qN)}\\b`).test(tN)) s = 400
+    else {
+      const matched = qTokens.filter((tk) => tk.length > 1 && tN.includes(tk)).length
+      const ratio = qTokens.length ? matched / qTokens.length : 0
+      s = Math.round(ratio * 300) + (matched > 0 ? 50 : 0)
+      if (matched === 0) continue // unrelated result — filtered out
+    }
+    if (qYear && m.year === qYear) s += 200 // exact title + year boost
+    s += Math.min(50, m.popularity / 10)
+    results.push({ m, s })
   }
-  return respond(env, { results }, 200, cache)
+  results.sort((a, b) => b.s - a.s || b.m.popularity - a.m.popularity)
+  return respond(env, { results: results.slice(0, 24).map((r) => r.m) }, 200, cache)
 }
 
 async function handleDetail(env: Env, sp: URLSearchParams): Promise<Response> {
@@ -810,4 +851,41 @@ export async function nlCandidates(env: Env, query: string): Promise<NLCandidate
   }
 
   return out.slice(0, 60)
+}
+
+/* ── legal watch providers (SEO "where to watch" blocks) ────────────────
+   TMDB /{type}/{id}/watch/providers?watch_region=<ISO 3166-1> — returns
+   verified streaming offer names for one region (flatrate/rent/buy).
+   Cached with the same pipeline as details (KV 7 d). null on any failure. */
+export async function fetchWatchProviders(
+  env: Env,
+  type: 'movie' | 'tv',
+  num: string,
+  region: string,
+): Promise<string[] | null> {
+  interface WatchProviderEntry {
+    flatrate?: { provider_name?: string }[]
+    rent?: { provider_name?: string }[]
+    buy?: { provider_name?: string }[]
+  }
+  try {
+    const { data } = await cachedUpstream(
+      env,
+      buildUpstream(env, `/${type}/${num}/watch/providers`, { watch_region: region }),
+      TTL_DETAIL,
+    )
+    const results = (data as { results?: Record<string, WatchProviderEntry> } | null)?.results
+    if (!results) return null
+    const entry = results[region] ?? results[region.toUpperCase()] ?? results[region.toLowerCase()]
+    if (!entry) return []
+    const names = new Set<string>()
+    for (const tier of [entry.flatrate, entry.rent, entry.buy]) {
+      for (const p of Array.isArray(tier) ? tier : []) {
+        if (p?.provider_name) names.add(p.provider_name)
+      }
+    }
+    return Array.from(names).slice(0, 6)
+  } catch {
+    return null
+  }
 }

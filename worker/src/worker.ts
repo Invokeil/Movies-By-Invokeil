@@ -25,6 +25,7 @@
    TMDB_DEMO_KEY api_key secret (optional) instead of failing.              */
 
 import { handleMedia, nlCandidates } from './media-gateway'
+import { handleSEO } from './seo'
 
 /* Minimal R2 surface used by the image proxy (avoids workers-types dep) */
 interface R2ObjectLite {
@@ -547,7 +548,7 @@ async function ai(req: Request, env: Env): Promise<Response> {
             const ci = typeof (c.i ?? c.id) === 'string' ? String(c.i ?? c.id) : ''
             if (ci && !have.has(ci)) {
               have.add(ci)
-              results.push({ id: ci, reason: '' })
+              results.push({ id: ci, reason: 'Trending pick matching your search' })
             }
           }
         }
@@ -576,6 +577,21 @@ async function ai(req: Request, env: Env): Promise<Response> {
     error: 'ai unavailable — local engine takes over',
     ...(tierErrors.length ? { tiers: tierErrors } : {}),
   })
+}
+
+/* ── SPA route hygiene (soft-404 guard + robots directives) ───────── */
+
+const SPA_PREFIXES = ['/watch', '/library', '/search', '/settings', '/movies', '/tv', '/anime', '/movie', '/genre']
+const UTILITY_PREFIXES = ['/watch', '/library', '/search', '/settings', '/movies', '/tv', '/anime', '/movie', '/genre']
+
+function isKnownSpaPath(p: string): boolean {
+  if (p === '/') return true
+  return SPA_PREFIXES.some((x) => p === x || p.startsWith(`${x}/`))
+}
+
+function isUtilityPath(p: string): boolean {
+  if (p === '/') return false
+  return UTILITY_PREFIXES.some((x) => p === x || p.startsWith(`${x}/`))
 }
 
 /* ── entrypoint ──────────────────────────────────────────────────────── */
@@ -617,10 +633,55 @@ export default {
         return await handleMedia(new URL(req.url), env)
       }
 
-      /* Static assets (exported SPA) — served by the ASSETS binding.
-         Unknown paths fall back to index.html (single-page-application). */
+      /* Static assets (exported SPA) + SEO/AEO layer.
+         SEO renders crawler-facing pages & per-URL head patches; the SPA
+         itself is untouched. Unknown paths get a REAL 404 (no soft-404). */
       if (env.ASSETS && !pathname.startsWith('/api') && pathname !== '/health') {
-        return env.ASSETS.fetch(req)
+        if (req.method !== 'GET') return env.ASSETS.fetch(req)
+
+        /* 1 — SEO layer: sitemap, bot pages, head-injected shells, 404s */
+        try {
+          const seoRes = await handleSEO(req, env)
+          if (seoRes) return seoRes
+        } catch {
+          /* the SEO layer must never take the site down → SPA flow */
+        }
+
+        /* /index.html duplicates / → permanent redirect */
+        if (pathname === '/index.html') {
+          return Response.redirect(new URL('/', req.url).toString(), 301)
+        }
+
+        /* 2 — junk paths → real 404 + noindex (SPA still boots for users) */
+        if (!isKnownSpaPath(pathname)) {
+          const nf = await env.ASSETS.fetch(new Request(new URL('/', req.url), { headers: req.headers }))
+          const html = nf.ok ? await nf.text() : ''
+          if (html) {
+            return new Response(html, {
+              status: 404,
+              headers: {
+                'content-type': 'text/html; charset=utf-8',
+                'x-robots-tag': 'noindex, nofollow',
+                'cache-control': 'no-store',
+              },
+            })
+          }
+          return new Response('Not found', {
+            status: 404,
+            headers: { 'content-type': 'text/plain; charset=utf-8', 'x-robots-tag': 'noindex, nofollow' },
+          })
+        }
+
+        /* 3 — SPA shell; utility routes (search/library/watch/browse)
+           stay out of the index via X-Robots-Tag */
+        const assetsRes = await env.ASSETS.fetch(req)
+        const ct = assetsRes.headers.get('content-type') ?? ''
+        if (ct.includes('text/html') && isUtilityPath(pathname)) {
+          const h = new Headers(assetsRes.headers)
+          h.set('x-robots-tag', 'noindex, follow')
+          return new Response(assetsRes.body, { status: assetsRes.status, headers: h })
+        }
+        return assetsRes
       }
 
       return json(env, { ok: false, error: 'not found' }, 404)
