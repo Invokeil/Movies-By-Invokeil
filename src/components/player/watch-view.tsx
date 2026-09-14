@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Minimize2, X, Radio, RefreshCw, ShieldAlert } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Minimize2, X, Radio, RefreshCw, ShieldAlert, Zap } from 'lucide-react'
 import type { UnifiedMedia } from '@/lib/types'
 import { useApp } from '@/lib/store'
 import { mediaService } from '@/lib/services/media'
@@ -21,7 +21,8 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
   const [iframeReady, setIframeReady] = useState(false)
   const [showFallback, setShowFallback] = useState(false)
   const [longWait, setLongWait] = useState(false) // still no signal after the extended grace period
-  const [providerIndex, setProviderIndex] = useState(player.index)
+  const [attemptIdx, setAttemptIdx] = useState(player.attempt)
+  const [exhausted, setExhausted] = useState(false) // every provider/mirror attempt was tried
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const posRef = useRef(0)
   const savedRef = useRef(0)
@@ -32,8 +33,11 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
     const t = setTimeout(() => {
       setLoading(true)
       // new title / episode → fresh iframe instance: reset transient states
+      player.startFromPreferred()
+      setAttemptIdx(player.attempt)
       setPlayerLive(false)
       setIframeReady(false)
+      setExhausted(false)
       setShowFallback(false)
       setLongWait(false)
       ;(async () => {
@@ -79,6 +83,8 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
       setPlayerLive(true)
       setShowFallback(false)
       setLongWait(false)
+      setExhausted(false)
+      player.markAlive() // sticky: this provider actually played
       if (e.duration && e.duration > 0) setDuration(e.duration)
       if (typeof e.currentTime === 'number' && e.currentTime > 0) {
         posRef.current = e.currentTime
@@ -118,10 +124,66 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
     }
   }, [media, duration, season, episode, bumpLibrary])
 
-  /* Non-blocking fallback: a slim status panel BELOW the frame (never
-     covering the iframe) appears only after a generous wait — 12 s once
-     the iframe loaded, 15 s raw — and never while events are flowing.
-     A second threshold flips the status line to "no signal".            */
+  /* Auto-failover: advance one attempt when the current provider/mirror
+     is provably not working. Switching is FAST:
+       • ~4.5 s — mirror domain unreachable (no-cors reachability probe)
+       • ~8 s   — iframe never fires load
+       • +7–15 s— frame loads but the provider never signals playback
+                  (only for providers WITH an event API; providers without
+                  one get the benefit of the doubt once loaded)
+     Exhausting every attempt stops the engine and shows the help panel. */
+  const failover = useCallback((reason: string) => {
+    const nextName = player.autoNext()
+    if (!nextName) {
+      setExhausted(true)
+      setShowFallback(true)
+      setLongWait(true)
+      return
+    }
+    toast.info(`Player: ${reason} — switching to ${nextName}`, { id: 'failover', duration: 3000 })
+    setPlayerLive(false)
+    setIframeReady(false)
+    setShowFallback(false)
+    setLongWait(false)
+    setAttemptIdx(player.attempt)
+  }, [])
+
+  const embedUrl = media ? player.attemptUrl(media, season, episode) : ''
+
+  useEffect(() => {
+    if (!media || playerLive || exhausted) return
+    const attempt = player.current
+
+    /* phase 1 — frame not loaded yet: probe + load deadline */
+    if (!iframeReady) {
+      let cancelled = false
+      const ctrl = new AbortController()
+      const killer = setTimeout(() => ctrl.abort(), 4500)
+      fetch(new URL(embedUrl).origin, { mode: 'no-cors', cache: 'no-store', signal: ctrl.signal })
+        .then(() => clearTimeout(killer))
+        .catch(() => {
+          if (!cancelled) failover('mirror unreachable')
+        })
+      const loadT = setTimeout(() => failover('no response'), 8000)
+      return () => {
+        cancelled = true
+        clearTimeout(killer)
+        clearTimeout(loadT)
+        ctrl.abort()
+      }
+    }
+
+    /* phase 2 — frame loaded: event-capable providers must prove playback;
+       no-event providers get the benefit of the doubt (nothing more to
+       detect — switching away from a working player would be worse).     */
+    if (attempt.events) {
+      const t = setTimeout(() => failover('no playback signal'), attemptIdx === 0 ? 15000 : 7000)
+      return () => clearTimeout(t)
+    }
+  }, [media, playerLive, iframeReady, exhausted, attemptIdx, embedUrl, failover])
+
+  /* Non-blocking status panel BELOW the frame (never covering it) — shows
+     while a provider is struggling or after manual/exhausted failover.   */
   useEffect(() => {
     if (playerLive) return
     const base = iframeReady ? 12000 : 15000
@@ -131,17 +193,18 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
       setLongWait(true)
     }, base + 9000)
     return () => { clearTimeout(t1); clearTimeout(t2) }
-  }, [playerLive, iframeReady, id, season, episode, providerIndex])
+  }, [playerLive, iframeReady, id, season, episode, attemptIdx])
 
-  /* Failover: switch provider (chip = direct pick, button = cycle) and
-     remount the iframe. Watch progress (posRef) is kept — playback
+  /* Failover: switch provider (chip = direct pick, button = cycle mirror)
+     and remount the iframe. Watch progress (posRef) is kept — playback
      position continues under the new provider.                          */
   const switchProvider = (target?: number) => {
-    if (typeof target === 'number') player.setIndex(target)
+    if (typeof target === 'number') player.setPreferred(target)
     else player.next()
-    setProviderIndex(player.index)
+    setAttemptIdx(player.attempt)
     setPlayerLive(false)
     setIframeReady(false)
+    setExhausted(false)
     setShowFallback(false)
     setLongWait(false)
   }
@@ -155,8 +218,7 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
     )
   }
 
-  const activeProvider = providers[providerIndex] ?? providers[0]
-  const embedUrl = player.getEmbedUrl(media, season, episode)
+  const attempt = player.current
   const pct = Math.round((position / Math.max(duration, 1)) * 100)
   const seasonInfo = media.seasons?.find((s) => s.season === season)
 
@@ -184,7 +246,7 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
         <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-[#2b2226]">
           <iframe
             ref={iframeRef}
-            key={`${id}-${season ?? 0}-${episode ?? 0}-${providerIndex}`}
+            key={`${id}-${season ?? 0}-${episode ?? 0}-${attemptIdx}`}
             src={embedUrl}
             className="player-frame"
             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture; autoplay*; encrypted-media*"
@@ -232,7 +294,15 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
             )}
           >
             <Radio size={11} className={cn(playerLive && 'animate-pulse')} />
-            {playerLive ? 'Player events live' : 'Local progress engine'} · {activeProvider.name}
+            {playerLive
+              ? 'Player events live'
+              : iframeReady
+                ? attempt.events
+                  ? 'Waiting for playback'
+                  : 'Loaded'
+                : 'Connecting…'}{' '}
+            · {attempt.provider}
+            <span className="hidden font-semibold opacity-60 sm:inline">{new URL(attempt.domain).host}</span>
           </span>
 
           <GlassButton
@@ -275,15 +345,20 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
               <h3 className="text-sm font-bold text-ink">Player status</h3>
               <p className="text-xs font-semibold text-mauve">
                 {longWait
-                  ? <>No signal from {activeProvider.name} — the embed loaded but never started. Try another provider or open it in a new tab.</>
-                  : <>Waiting for {activeProvider.name}… slow embed, or no stream available for this title.</>}
+                  ? <>
+                      No playback signal from {attempt.provider} ({new URL(attempt.domain).host}).
+                      {exhausted ? ' Every provider was tried — pick one below or open it in a new tab.' : ' Auto-fallback keeps trying the next provider automatically, or pick one below.'}
+                    </>
+                  : <>Waiting for {attempt.provider}… slow embed, or no stream available for this title. Auto-fallback will switch if it stays silent.</>}
               </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-mauve">Switch provider</span>
+            <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-mauve">
+              <Zap size={11} /> Auto-fallback on · switch provider
+            </span>
             {providers.map((p, i) => (
-              <Chip key={p.name} active={i === providerIndex} onClick={() => switchProvider(i)}>
+              <Chip key={p.name} active={attempt.provider === p.name} onClick={() => switchProvider(i)}>
                 {p.name}
               </Chip>
             ))}
@@ -305,7 +380,7 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
           <h1 className="text-2xl font-extrabold tracking-tight text-ink">{media.title}</h1>
           <p className="mt-0.5 text-sm font-semibold text-mauve">
             {media.mediaType === 'movie' ? 'Movie' : `Season ${season}, Episode ${episode}`}
-            {' · '}provider: {activeProvider.name}{' · '}ID: TMDB {media.tmdbId}
+            {' · '}provider: {attempt.provider} ({new URL(attempt.domain).host}){' · '}ID: TMDB {media.tmdbId}
             {media.mediaType === 'anime' && media.malId ? ` · MAL ${media.malId}` : ''}
           </p>
         </div>

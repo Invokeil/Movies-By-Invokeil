@@ -643,8 +643,10 @@ export default {
         try {
           const seoRes = await handleSEO(req, env)
           if (seoRes) return seoRes
-        } catch {
-          /* the SEO layer must never take the site down → SPA flow */
+        } catch (e) {
+          /* the SEO layer must never take the site down → SPA flow.
+             Failures are logged so regressions stay diagnosable. */
+          console.error(`[seo] layer failed for ${pathname}`, e instanceof Error ? `${e.message}\n${e.stack}` : e)
         }
 
         /* /index.html duplicates / → permanent redirect */
@@ -652,7 +654,32 @@ export default {
           return Response.redirect(new URL('/', req.url).toString(), 301)
         }
 
-        /* 2 — junk paths → real 404 + noindex (SPA still boots for users) */
+        /* 2 — real static files pass straight through (never SEO/SPA-rewritten).
+           Extensions + /_next/ cover JS/CSS/fonts/images/manifest/etc.;
+           extension-less app routes continue to the SPA/404 logic below.   */
+        const isStaticFile = pathname.startsWith('/_next/') || /\.[a-zA-Z0-9]{1,8}$/.test(pathname)
+        if (isStaticFile) {
+          const asset = await env.ASSETS.fetch(req)
+          /* SPA fallback for a file-shaped URL would be a soft-404 (200 HTML
+             at a bogus asset path) → convert to a real 404 instead.        */
+          const ct = asset.headers.get('content-type') ?? ''
+          if (asset.ok && !ct.includes('text/html')) return asset
+          const nf = await env.ASSETS.fetch(
+            new Request(new URL('/404.html', req.url), { headers: req.headers }),
+          )
+          if (nf.ok && (nf.headers.get('content-type') ?? '').includes('text/html')) {
+            return new Response(nf.body, {
+              status: 404,
+              headers: { 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex, nofollow', 'cache-control': 'public, max-age=600' },
+            })
+          }
+          return new Response('Not found', {
+            status: 404,
+            headers: { 'content-type': 'text/plain; charset=utf-8', 'x-robots-tag': 'noindex, nofollow' },
+          })
+        }
+
+        /* 3 — junk paths → real 404 + noindex (SPA still boots for users) */
         if (!isKnownSpaPath(pathname)) {
           const nf = await env.ASSETS.fetch(new Request(new URL('/', req.url), { headers: req.headers }))
           const html = nf.ok ? await nf.text() : ''

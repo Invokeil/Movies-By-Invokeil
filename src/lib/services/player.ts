@@ -1,85 +1,202 @@
 import type { UnifiedMedia } from '../types'
 
-/* ── PlayerService — Adapter pattern with provider failover ───────────
-   Frontend never constructs stream URLs directly. All providers live in
-   one ordered array; the service routes every URL through the active
-   index and can cycle to the next provider on failure (setIndex/next).  */
+/* ── PlayerService — ordered AUTO-failover across providers & mirrors ────
+   Frontend never constructs stream URLs directly. Providers are tried in
+   priority order; each provider owns several VERIFIED-ALIVE mirror domains
+   (checked 2026-09-14) so a dead mirror rotates within the provider before
+   the next provider takes over. The watch view advances attempts
+   automatically (fast switch: ~4.5 s for unreachable domains, ~8 s for
+   frames that never load, +7–15 s for frames that load but never signal)
+   and the viewer can always pick a provider chip manually.
 
-export interface PlayerProvider {
+   Priority chain (index 0 = default, untouched for existing users):
+     1. VidLink      vidlink.pro                      + events API
+     2. Vidsrc       vidsrcme.ru / .su, vidsrc-me.ru,
+                     vidsrc2.ru                       + events API
+     3. 2Embed       2embed.cc, 2embed.skin
+     4. RiveStream   rivestream.ru, rivestream.app
+     5. SuperEmbed   multiembed.mov  (last resort — CF-fronted)
+   Excluded (verified dead/drifted 2026-09-14): vidsrc.xyz (down),
+   vidsrc-me.su (embed 404), vidsrc-embed.ru/.su + vsrc.su (drifted to
+   vsembed.ru), rivestream.vip (no DNS).                               */
+
+export interface PlayerAttempt {
+  provider: string // display name
+  domain: string // origin loaded into the iframe
+  events: boolean // documented postMessage playback-event support
+  url(m: UnifiedMedia, season?: number, episode?: number): string
+}
+
+interface ProviderDef {
   name: string
-  getMovieUrl(m: UnifiedMedia): string
-  getEpisodeUrl(m: UnifiedMedia, season: number, episode: number): string
-  getAnimeUrl(m: UnifiedMedia, episode: number, dub?: boolean): string
+  domains: string[]
+  events: boolean
+  movie(d: string, m: UnifiedMedia): string
+  tv(d: string, m: UnifiedMedia, s: number, e: number): string
+  /** MAL-native players only; others fall back to the TV form. */
+  anime?(d: string, m: UnifiedMedia, e: number, dub: boolean): string
 }
 
-const VIDLINK_BASE = 'https://vidlink.pro'
-const VIDSRC_BASE = 'https://vidsrc.xyz'
-const TWOEMBED_BASE = 'https://www.2embed.cc'
-
-export const vidlinkProvider: PlayerProvider = {
+const VIDLINK: ProviderDef = {
   name: 'VidLink',
-  getMovieUrl: (m) => `${VIDLINK_BASE}/movie/${m.tmdbId}`,
-  getEpisodeUrl: (m, season, episode) => `${VIDLINK_BASE}/tv/${m.tmdbId}/${season}/${episode}`,
-  getAnimeUrl: (m, episode, dub = false) =>
-    `${VIDLINK_BASE}/anime/${m.malId ?? 0}/${episode}/${dub ? 'dub' : 'sub'}`,
+  domains: ['https://vidlink.pro'],
+  events: true,
+  movie: (d, m) => `${d}/movie/${m.tmdbId}`,
+  tv: (d, m, s, e) => `${d}/tv/${m.tmdbId}/${s}/${e}`,
+  anime: (d, m, e, dub) =>
+    m.malId ? `${d}/anime/${m.malId}/${e}/${dub ? 'dub' : 'sub'}` : `${d}/tv/${m.tmdbId}/1/${e}`,
 }
 
-/* Vidsrc has no MAL identity layer — anime falls back to the TV form. */
-export const vidsrcProvider: PlayerProvider = {
+const VIDSRC: ProviderDef = {
   name: 'Vidsrc',
-  getMovieUrl: (m) => `${VIDSRC_BASE}/embed/movie?tmdb=${m.tmdbId}`,
-  getEpisodeUrl: (m, season, episode) =>
-    `${VIDSRC_BASE}/embed/tv?tmdb=${m.tmdbId}&season=${season}&episode=${episode}`,
-  getAnimeUrl: (m, episode) => `${VIDSRC_BASE}/embed/tv?tmdb=${m.tmdbId}&season=1&episode=${episode}`,
+  domains: ['https://vidsrcme.ru', 'https://vidsrcme.su', 'https://vidsrc-me.ru', 'https://vidsrc2.ru'],
+  events: true,
+  movie: (d, m) => `${d}/embed/movie/${m.tmdbId}`,
+  tv: (d, m, s, e) => `${d}/embed/tv/${m.tmdbId}/${s}/${e}`,
+  anime: (d, m, e) => `${d}/embed/tv/${m.tmdbId}/1/${e}`,
 }
 
-export const twoEmbedProvider: PlayerProvider = {
-  name: 'TwoEmbed',
-  getMovieUrl: (m) => `${TWOEMBED_BASE}/embed/${m.tmdbId}`,
-  getEpisodeUrl: (m, season, episode) => `${TWOEMBED_BASE}/embedtv/${m.tmdbId}&s=${season}&e=${episode}`,
-  getAnimeUrl: (m, episode) => `${TWOEMBED_BASE}/embedtv/${m.tmdbId}&s=1&e=${episode}`,
+const TWOEMBED: ProviderDef = {
+  name: '2Embed',
+  domains: ['https://www.2embed.cc', 'https://www.2embed.skin'],
+  events: false,
+  movie: (d, m) => `${d}/embed/${m.tmdbId}`,
+  tv: (d, m, s, e) => `${d}/embedtv/${m.tmdbId}&s=${s}&e=${e}`,
+  anime: (d, m, e) => `${d}/embedtv/${m.tmdbId}&s=1&e=${e}`,
 }
 
-/* Ordered failover chain — index 0 is the default provider. */
-export const providers: PlayerProvider[] = [vidlinkProvider, vidsrcProvider, twoEmbedProvider]
+const RIVESTREAM: ProviderDef = {
+  name: 'RiveStream',
+  domains: ['https://rivestream.ru', 'https://www.rivestream.app', 'https://watch.rivestream.app'],
+  events: false,
+  movie: (d, m) => `${d}/embed?type=movie&id=${m.tmdbId}`,
+  tv: (d, m, s, e) => `${d}/embed?type=tv&id=${m.tmdbId}&season=${s}&episode=${e}`,
+  anime: (d, m, e) => `${d}/embed?type=tv&id=${m.tmdbId}&season=1&episode=${e}`,
+}
+
+const SUPEREMBED: ProviderDef = {
+  name: 'SuperEmbed',
+  domains: ['https://multiembed.mov'],
+  events: false,
+  movie: (d, m) => `${d}/?video_id=${m.tmdbId}&tmdb=1`,
+  tv: (d, m, s, e) => `${d}/?video_id=${m.tmdbId}&tmdb=1&s=${s}&e=${e}`,
+  anime: (d, m, e) => `${d}/?video_id=${m.tmdbId}&tmdb=1&s=1&e=${e}`,
+}
+
+export const PROVIDERS: ProviderDef[] = [VIDLINK, VIDSRC, TWOEMBED, RIVESTREAM, SUPEREMBED]
+
+/* provider name → chip list (legacy export shape: objects with .name) */
+export const providers = PROVIDERS.map((p) => ({ name: p.name }))
+
+/* flat attempt list: provider × mirror domain, in failover order */
+export const ATTEMPTS: PlayerAttempt[] = PROVIDERS.flatMap((p) =>
+  p.domains.map((domain) => ({
+    provider: p.name,
+    domain,
+    events: p.events,
+    url: (m: UnifiedMedia, season?: number, episode?: number) => {
+      const s = season ?? 1
+      const e = episode ?? 1
+      if (m.mediaType === 'movie') return p.movie(domain, m)
+      if (m.mediaType === 'anime' && p.anime && m.malId) return p.anime(domain, m, e, false)
+      return p.tv(domain, m, s, e)
+    },
+  })),
+)
+
+/* first attempt index of each provider (for chip jumps) */
+const START_OF: number[] = []
+PROVIDERS.forEach((p, i) => {
+  START_OF[i] = ATTEMPTS.findIndex((a) => a.provider === p.name)
+})
 
 class PlayerService {
-  private activeIndex = 0
+  private preferredIdx = 0 // sticky "what worked last time" provider
+  private attemptIdx = 0 // concrete provider × domain attempt
 
+  get attempt() {
+    return this.attemptIdx
+  }
+
+  get attemptsCount() {
+    return ATTEMPTS.length
+  }
+
+  get current(): PlayerAttempt {
+    return ATTEMPTS[this.attemptIdx]
+  }
+
+  get domain() {
+    return ATTEMPTS[this.attemptIdx].domain
+  }
+
+  /* legacy compat: previously "index" meant the active provider */
   get index() {
-    return this.activeIndex
-  }
-
-  setIndex(i: number) {
-    this.activeIndex = ((i % providers.length) + providers.length) % providers.length
-  }
-
-  /* Advance to the next provider cyclically; returns its name. */
-  next(): string {
-    this.activeIndex = (this.activeIndex + 1) % providers.length
-    return providers[this.activeIndex].name
+    const i = PROVIDERS.findIndex((p) => p.name === this.current.provider)
+    return i < 0 ? 0 : i
   }
 
   get name() {
-    return providers[this.activeIndex].name
+    return this.current.provider
   }
 
+  /* chip click → jump to a provider's first mirror */
+  setPreferred(i: number) {
+    this.preferredIdx = ((i % PROVIDERS.length) + PROVIDERS.length) % PROVIDERS.length
+    this.attemptIdx = START_OF[this.preferredIdx]
+  }
+
+  /* legacy compat */
+  setIndex(i: number) {
+    this.setPreferred(i)
+  }
+
+  /* manual cycle button — wraps across every attempt */
+  next(): string {
+    this.attemptIdx = (this.attemptIdx + 1) % ATTEMPTS.length
+    const i = PROVIDERS.findIndex((p) => p.name === this.current.provider)
+    if (i >= 0) this.preferredIdx = i
+    return this.name
+  }
+
+  /* auto-failover advance — no wrap; null ⇒ every attempt tried */
+  autoNext(): string | null {
+    if (this.attemptIdx + 1 >= ATTEMPTS.length) return null
+    this.attemptIdx += 1
+    return this.name
+  }
+
+  /* sticky preference — remember the provider that actually played */
+  markAlive() {
+    const i = PROVIDERS.findIndex((p) => p.name === this.current.provider)
+    if (i >= 0) this.preferredIdx = i
+  }
+
+  /* new title → begin at the preferred provider's first mirror */
+  startFromPreferred() {
+    this.attemptIdx = START_OF[this.preferredIdx]
+  }
+
+  attemptUrl(m: UnifiedMedia, season?: number, episode?: number): string {
+    return this.current.url(m, season, episode)
+  }
+
+  /* ── legacy per-kind helpers (kept for API compatibility) ─────────── */
   getMovieUrl(m: UnifiedMedia): string {
-    return providers[this.activeIndex].getMovieUrl(m)
+    return this.attemptUrl(m)
   }
 
   getEpisodeUrl(m: UnifiedMedia, season = 1, episode = 1): string {
-    return providers[this.activeIndex].getEpisodeUrl(m, season, episode)
+    return this.attemptUrl(m, season, episode)
   }
 
   getAnimeUrl(m: UnifiedMedia, episode = 1, dub = false): string {
-    return providers[this.activeIndex].getAnimeUrl(m, episode, dub)
+    const p = PROVIDERS.find((x) => x.name === this.current.provider) ?? PROVIDERS[0]
+    return p.anime ? p.anime(this.domain, m, episode, dub) : p.tv(this.domain, m, 1, episode)
   }
 
   getEmbedUrl(m: UnifiedMedia, season?: number, episode?: number): string {
-    if (m.mediaType === 'movie') return this.getMovieUrl(m)
-    if (m.mediaType === 'anime' && m.malId) return this.getAnimeUrl(m, episode ?? 1)
-    return this.getEpisodeUrl(m, season ?? 1, episode ?? 1)
+    return this.attemptUrl(m, season, episode)
   }
 
   hasAnimeMapping(m: UnifiedMedia): boolean {
@@ -90,10 +207,12 @@ class PlayerService {
 export const player = new PlayerService()
 
 /* ── Player postMessage progress events ───────────────────────────────
-   Listens for player events: play / pause / progress / ended.
-   Events are accepted from ANY provider in the chain (source '' /
-   'vidlink' / 'vidsrc' / anything containing 'embed'); only known
-   dev-tooling noise sources are ignored.                                */
+   Normalizes every supported provider's event dialect into PlayerEvent:
+   • VidLink  { source:'vidlink', data:{ event, progress, currentTime … } }
+   • Vidsrc   { type:'PLAYER_EVENT', data:{ player_status,
+                player_progress, player_duration … } }
+   Events are accepted from any chain provider; only dev-tool noise is
+   ignored. Providers without an events API simply never fire.           */
 
 export interface PlayerEvent {
   event: string
@@ -121,6 +240,23 @@ export function attachPlayerListener(
       const src = String(data.source ?? data.provider ?? '').toLowerCase()
       if (NOISE_SOURCES.has(src)) return
       if (src && src !== 'vidlink' && src !== 'vidsrc' && !src.includes('embed')) return
+
+      /* Vidsrc PLAYER_EVENT envelope → normalized PlayerEvent */
+      if (data.type === 'PLAYER_EVENT' && data.data && typeof data.data === 'object') {
+        const d = data.data as Record<string, unknown>
+        const status = String(d.player_status ?? '').toLowerCase()
+        const cur = typeof d.player_progress === 'number' ? d.player_progress : undefined
+        const dur = typeof d.player_duration === 'number' ? d.player_duration : undefined
+        onEvent({
+          event: status === 'completed' ? 'ended' : status === 'playing' ? 'progress' : status,
+          progress: cur && dur ? cur / dur : undefined,
+          currentTime: cur,
+          duration: dur,
+        })
+        return
+      }
+
+      /* VidLink / generic { event, progress, currentTime } envelope */
       const inner = data.data ?? data
       if (inner?.event || inner?.type) {
         onEvent({

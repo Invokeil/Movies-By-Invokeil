@@ -633,6 +633,26 @@ export async function handleSEO(req: Request, env: Env): Promise<Response | null
   /* 1 — sitemap (same for bots & browsers) */
   if (path === '/sitemap.xml') return sitemap(env, origin)
 
+  /* 1b — robots.txt: crawl directives + sitemap ref (single source of truth) */
+  if (path === '/robots.txt') {
+    const body = [
+      'User-agent: *',
+      'Allow: /',
+      'Disallow: /search',
+      'Disallow: /watch',
+      'Disallow: /library',
+      'Disallow: /settings',
+      'Disallow: /api/',
+      '',
+      `Sitemap: ${origin}/sitemap.xml`,
+      '',
+    ].join('\n')
+    return new Response(body, {
+      status: 200,
+      headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': `public, max-age=${SITEMAP_TTL}`, 'x-seo': 'robots' },
+    })
+  }
+
   /* 2 — title pages: /movie/{num} · /tv/{num} */
   const titleM = /^\/(movie|tv)\/(\d+)$/.exec(path)
   if (titleM) {

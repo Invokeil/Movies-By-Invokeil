@@ -26,8 +26,17 @@
 
   /* Static assets — serves the SPA exported to ../out (next build with
      output: 'export'). Unknown paths fall back to index.html (SPA routing);
-     the Worker fetch handler routes non-/api traffic to this binding. */
-  "assets": { "directory": "../out", "binding": "ASSETS", "not_found_handling": "single-page-application" },
+     the Worker fetch handler routes non-/api traffic to this binding.
+     run_worker_first: ALL requests reach the Worker first so the SEO/AEO
+     engine can serve bot pages & head-patched shells (otherwise the raw
+     index.html would shadow it on "/"). The Worker passes every real
+     static file through to ASSETS itself — nothing is lost.             */
+  "assets": {
+    "directory": "../out",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  },
 
   /* Custom domain (zone must exist in the Cloudflare account) */
   "routes": [ { "pattern": "movies.invokeil.cfd", "custom_domain": true } ],
