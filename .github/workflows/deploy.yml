@@ -1,0 +1,41 @@
+# ── Movies by InvokeIL — CI/CD ──────────────────────────────────────────
+# Builds the static SPA and deploys Worker + assets to Cloudflare on every
+# push to main. Requires two repo secrets (Settings → Secrets → Actions):
+#   CLOUDFLARE_API_TOKEN   — token with "Workers Scripts: Edit" permission
+#   CLOUDFLARE_ACCOUNT_ID  — your Cloudflare account id
+# Worker secrets (TMDB_API_TOKEN, OMDB_API_KEY, GEMINI_API_KEY, GROQ_API_KEY)
+# live in the Worker itself and are NOT touched by this workflow.
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build static export
+        run: npx next build
+
+      - name: Deploy Worker + assets
+        run: npx wrangler deploy
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

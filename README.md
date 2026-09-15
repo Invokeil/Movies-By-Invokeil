@@ -122,6 +122,11 @@ cd worker
 ./deploy.sh          # deploys Worker + ./out static assets + custom domain route
 ```
 
+**Automatic deploys** — `.github/workflows/deploy.yml` builds and deploys on
+every push to `main`. One-time setup: add `CLOUDFLARE_API_TOKEN` and
+`CLOUDFLARE_ACCOUNT_ID` as repository secrets (Settings → Secrets → Actions);
+Worker runtime secrets are managed separately and are never touched.
+
 ### 4. Provision secrets (never in the repo!)
 
 ```bash

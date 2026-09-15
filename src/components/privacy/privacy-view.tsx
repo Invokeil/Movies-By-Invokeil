@@ -51,7 +51,7 @@ export function PrivacyView() {
   /* seed the rules editor with current rules (defaults + custom) */
   useEffect(() => {
     setRulesDraft([...DEFAULT_FILTER_LINES, ...prefs.adShield.customRules].join('\n'))
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])  
 
   /* live blocked counter from the SW */
   useEffect(() => {
