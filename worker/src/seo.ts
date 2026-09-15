@@ -685,10 +685,13 @@ async function shellWithHead(env: Env, req: Request, patch: HeadPatch, cacheTag:
 /* ── sitemap ─────────────────────────────────────────────────────────── */
 
 async function sitemap(env: Env, origin: string): Promise<Response> {
-  const cacheKey = new Request(`${CACHE_BASE}:sitemap`)
+  /* :v2 — an early build cached this payload as text/html; a versioned key
+     abandons the stale entry (it expires on its own) and the guard below
+     makes the cache self-healing even if a wrong type ever gets stored. */
+  const cacheKey = new Request(`${CACHE_BASE}:sitemap:v2`)
   try {
     const hit = await caches.default.match(cacheKey)
-    if (hit) return hit
+    if (hit && (hit.headers.get('content-type') ?? '').includes('xml')) return hit
   } catch {
     /* render fresh */
   }
