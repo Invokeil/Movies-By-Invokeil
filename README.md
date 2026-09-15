@@ -103,6 +103,35 @@ fallback chain (**Gemini → Groq → Cloudflare Workers AI**) so recommendation
 keep working even if one provider is down. Each pick comes with a one-line
 **why**.
 
+### 👫 Duo Watch Party (new!)
+
+Watch the **same movie at the same second** with your partner — built for
+the "nibba nibbi" long-distance movie night:
+
+1. **Settings → Partner Share** → *Create private invite link* → send it to
+   your partner (WhatsApp, anywhere). The link's secret lives after the `#`
+   in the URL — **browsers never send that part to any server**, so the
+   tunnel is private by construction.
+2. Your partner opens it once → both devices are paired. A **Duo** button
+   now appears on every movie/TV detail page.
+3. Press **Duo** → start watching. Your partner is pulled into the *same
+   title at your exact moment* — automatically, with a live drift meter and
+   a **Jump to partner** button if they ever fall behind.
+4. When both of you are connected the player shows three buttons —
+   **Chat · Voice · Video**:
+   - **Chat** is end-to-end encrypted (AES-GCM over a direct WebRTC
+     DataChannel) — even the server only routes anonymous ciphertext, and
+     nothing is ever saved.
+   - **Voice** is full-quality P2P audio mixed with **3D spatial sound**
+     (your partner's voice sits beside the screen — toggle 3D/2D anytime).
+   - **Video** puts your partner's camera in a corner tile of the player,
+   PiP-style.
+5. Need to rotate the invite? **Regenerate** — and if your partner is
+   online, the app asks for *their permission first*.
+
+No accounts, no rooms to configure, no server-side chat logs. Two people,
+one tunnel, everything else stays out.
+
 ### 🛡️ Privacy Center (all built in, no extensions needed)
 
 | Tool | What it does |
@@ -274,6 +303,7 @@ keys navigate the 10-foot UI.
 - Home feed personalisation v2 — behaviour-driven rails are in place; default demo entries still appear for brand-new sessions with no history.
 - VidLink embed diagnostics — some environments trigger the graceful fallback panel; the "open in new tab" escape hatch works in all of them.
 - Optional service worker for full offline PWA support (the Ad Shield already ships as a service worker when armed).
+- Duo deep-sync note: automatic position landing uses VidLink's start-position parameter; on other providers the partner lands at the title start and one tap of **Jump to partner** re-aligns — constrained by what third-party embeds expose.
 
 ## ⚖️ Attribution & disclaimer
 
