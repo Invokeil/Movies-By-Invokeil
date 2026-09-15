@@ -8,6 +8,7 @@
 
 **► Live site: [movies.invokeil.cfd](https://movies.invokeil.cfd)**
 
+[![Stable Release](https://img.shields.io/github/v/release/Invokeil/Movies-By-Invokeil?label=stable%20release&color=8B5CF6)](https://github.com/Invokeil/Movies-By-Invokeil/releases/latest)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs)](https://nextjs.org)
 [![React](https://img.shields.io/badge/React-19-149ECA?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://www.typescriptlang.org)
