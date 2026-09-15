@@ -218,15 +218,19 @@ export function DesktopBar() {
             <ChevronLeft size={18} />
           </button>
         )}
-        <button
-          onClick={() => navigate({ name: 'search' })}
-          className="glass glass-hover group flex w-full max-w-md min-w-56 items-center gap-3 rounded-full px-4 py-2.5 text-left text-sm text-mauve"
-          aria-label="Search movies and shows"
-        >
-          <Search size={16} />
-          <span className="flex-1 truncate">Search movies, TV, anime…</span>
-          <kbd className="hidden rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-bold text-mauve lg:inline">/</kbd>
-        </button>
+        {/* The real smart-search input lives on the /search page — showing
+            this pill there too would be a duplicate entry point. */}
+        {view.name !== 'search' && (
+          <button
+            onClick={() => navigate({ name: 'search' })}
+            className="glass glass-hover group flex w-full max-w-md min-w-56 items-center gap-3 rounded-full px-4 py-2.5 text-left text-sm text-mauve"
+            aria-label="Search movies and shows"
+          >
+            <Search size={16} />
+            <span className="flex-1 truncate">Search movies, TV, anime…</span>
+            <kbd className="hidden rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-bold text-mauve lg:inline">/</kbd>
+          </button>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <button

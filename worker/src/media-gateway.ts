@@ -562,7 +562,16 @@ async function handleSearch(env: Env, sp: URLSearchParams): Promise<Response> {
   if (kvSearchKey) {
     try {
       const stored = await kv.get<string>(kvSearchKey)
-      if (stored) return respond(env, JSON.parse(stored), 200, 'HIT')
+      /* Re-wrap in the { results } envelope — the live path below returns
+         { results: [...] } too, so cached & live shapes always match.
+         (A bare array here used to break client parsing → "no results".) */
+      if (stored) {
+        const parsed: unknown = JSON.parse(stored)
+        const items = Array.isArray(parsed)
+          ? parsed
+          : ((parsed as { results?: unknown[] })?.results ?? [])
+        return respond(env, { results: items }, 200, 'HIT')
+      }
     } catch {
       /* KV read failure → live pipeline */
     }

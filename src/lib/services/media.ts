@@ -73,7 +73,10 @@ export const mediaService = {
       const tp = type ? `&type=${encodeURIComponent(type)}` : ''
       const r = await fetch(`${API_BASE}/api/media?action=search&q=${encodeURIComponent(q)}${tp}`)
       const j = await r.json()
-      const items: UnifiedMedia[] = j.results ?? []
+      /* Worker normally returns { results: [...] }; tolerate a bare array
+         (older cached payloads) so a cache-shape mismatch can never blank
+         out real results. */
+      const items: UnifiedMedia[] = Array.isArray(j) ? j : (j.results ?? [])
       mediaStore.putSearch(key, items)
       return items
     } catch {

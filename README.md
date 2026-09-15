@@ -1,71 +1,163 @@
+<div align="center">
+
 # 🎬 Movies by InvokeIL
 
-**Privacy-first, local-first movie & TV discovery — running entirely on Cloudflare's free tier.**
+**Watch & discover movies, TV shows and anime — fast, private, and free.**
 
-Live at **[movies.invokeil.cfd](https://movies.invokeil.cfd)**
+**No account. No tracking. Your data never leaves your device.**
+
+**► Live site: [movies.invokeil.cfd](https://movies.invokeil.cfd)**
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs)](https://nextjs.org)
+[![React](https://img.shields.io/badge/React-19-149ECA?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://www.typescriptlang.org)
-[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers%20%2B%20R2%20%2B%20KV-orange?logo=cloudflare)](https://workers.cloudflare.com)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers%20%2B%20KV%20%2B%20R2-orange?logo=cloudflare)](https://workers.cloudflare.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 
-Movies by InvokeIL is a glassmorphism-styled streaming discovery portal. Every
-user preference, watch-history entry and playback position is stored **only on
-the user's own device** (IndexedDB) — there is no user account, no tracking
-pixel and no server-side profile. Metadata and images are fetched through a
-Cloudflare Worker and cached aggressively at the edge, in KV and in R2, so the
-site stays fast and cheap while the browser never holds a single API key.
-
-<p align="center">
-  <img src="docs/screenshots/home.png" alt="Home — hero, rows and continue watching" width="780">
-</p>
+</div>
 
 ---
 
-## ✨ Features
+## 📖 What is this? (read this first!)
 
-- **Glassmorphism UI** — five soft-glass accent palettes (`#D8E2DC #FFE5D9 #FFCAD4 #F4ACB7 #9D8189`), switchable in Settings, with desktop + mobile layouts.
-- **Smart Search (one pill, every way to find something)** — a single glass pill (press `/` anywhere) that auto-detects intent: typo-tolerant title search ("incepiton" still finds *Inception*), genre detection with misspellings ("scify" → Sci-Fi, "horrro" → Horror), scope chips (Auto · Movies · TV · Anime · Genre), a full genre browser, and a **built-in AI Mode** that auto-engages when a query reads like a description.
-- **Real artwork everywhere** — posters, backdrops and cast photos are proxied through `/api/img` and **persisted in R2 on first fetch**, so every image after the first viewer is served from Cloudflare storage.
-- **Global KV caching** — search results (24 h), title details (7 d) and lists (6 h) are stored in Cloudflare KV: the first viewer pays the TMDB round-trip, every viewer after that reads from CF storage. OMDb lookups are cached for 7 days. Repeat searches never touch TMDB/OMDb again.
-- **Local-first behaviour** — watch history, continue-watching positions, My List and palette choice live in IndexedDB via Dexie. Clear them any time from the Privacy Center; nothing ever leaves the device.
-- **Privacy Center** — a built-in uBlock-style Ad Shield (editable `||domain^` filter list + live blocked counter), Cloudflare 1.1.1.1 DoH status check with per-platform setup guides, a Private Session toggle that pauses all recording, and a one-tap Data Vault (export / import / wipe).
-- **Continue watching & mini-player** — resumable playback positions per title, a floating mini-player when you navigate away, and a library with Watching / Plan-to-watch tabs.
-- **AI recommendations** — a server-side fallback chain (Gemini → Groq → Cloudflare Workers AI) ranks candidate titles with a reason for each pick, with a 10-minute result cache.
-- **Search & browse** — multi-search across movies and TV, genre rows, mood discovery, trending / popular / top-rated / new-release rails, anime rail.
-- **Rich detail pages** — cast, runtime, seasons, tagline, IMDb rating / Metascore / awards enrichment via OMDb, and similar-title recommendations.
-- **VidLink player** — embedded playback per movie/TV episode with a graceful fallback panel (including an "open in new tab" escape hatch) when an embed cannot start.
-- **TV-ready** — 10-foot TV mode with spatial (D-pad/remote) navigation, plus complete PWA icons (SVG + raster favicon set + maskable) for installability on every platform.
+**Movies by InvokeIL** is a streaming *discovery* app — think of it as a
+beautiful, privacy-friendly shell around TMDB's catalog. You can:
+
+1. 🔍 **Find** any movie, TV show or anime — even if you spell it wrong
+2. ▶️ **Watch** it instantly through a built-in player with automatic source
+   fallback (if one source is down, the app quietly switches to the next)
+3. 🔖 **Save** titles to your watchlist and resume where you left off
+4. 🤖 **Ask AI** things like *"a mind-bending heist movie from the 2010s"* and
+   get real recommendations
+5. 🛡️ **Stay private** — built-in ad/tracker shield, no account, all data
+   stored in *your own browser*
+
+> 🧠 **New to GitHub / web apps?** No problem. As a **viewer** you don't need
+> to install anything — just open
+> [movies.invokeil.cfd](https://movies.invokeil.cfd) in any browser (phone,
+> tablet, laptop, or TV). Everything below the *Screenshots* section is only
+> for developers who want to run or deploy their own copy.
+
+---
+
+## 📸 Screenshots
+
+### 💻 Laptop / Desktop (1440×900)
+
+| Home | Smart Search |
+|---|---|
+| ![Desktop home — hero banner, trending rows, glass sidebar](docs/screenshots/laptop-home.webp) | ![Desktop search — typo "incepiton" auto-corrected to Inception, 13 results](docs/screenshots/laptop-search.webp) |
+| **Browse & Filter** | **Privacy Center** |
+| ![Desktop movies page — genre + rating filters, poster grid](docs/screenshots/laptop-movies.webp) | ![Desktop privacy center — ad shield, secure DNS, data vault](docs/screenshots/laptop-privacy.webp) |
+
+### 📱 Tablet (820×1180 — iPad)
+
+| Home |
+|---|
+| ![Tablet home — compact glass sidebar, hero, poster rows](docs/screenshots/tablet-home.webp) |
+
+### 📱 Mobile (390×844 — iPhone)
+
+| Home | Search |
+|---|---|
+| ![Mobile home — bottom navigation, hero, trending row](docs/screenshots/mobile-home.webp) | ![Mobile search — scope chips, edge-cached results](docs/screenshots/mobile-search.webp) |
+
+> The layout adapts to every screen: **phones** get a thumb-friendly bottom
+> nav, **tablets** get a compact rail, **desktops/laptops** get the full glass
+> sidebar, and **TVs** get 10-foot mode with D-pad (remote) navigation.
+
+---
+
+## ✨ Features — explained in plain language
+
+### 🔍 Smart Search (the best part — try it!)
+
+One search box that understands *everything* you throw at it:
+
+| You type | What happens |
+|---|---|
+| `incepiton` | ✅ Auto-corrected → **Inception (2010)** — typos are fixed automatically, you even see *"Auto-corrected incepiton → inception"* above the results |
+| `horrro movies` | ✅ Detects you mean the **Horror** genre (misspellings included: `scify` → Sci-Fi) and opens a genre browse |
+| `funny movie for kids` | ✅ Reads like a description → **AI Mode engages automatically** and recommends real titles with reasons |
+| `batman`, then click **Movies** chip | ✅ Scope chips (Auto · Movies · TV · Anime · Genre) narrow results to exactly what you want |
+| `/` (the slash key) | ✅ Jumps straight into search from anywhere |
+
+Plus **"did you mean"** suggestions from your own recent searches, a visual
+**genre browser**, and results cached on Cloudflare's edge so repeat searches
+feel instant.
+
+### ▶️ Playback that just works
+
+The player tries multiple embed sources **in order** and falls back
+automatically when one fails, so a broken source never blocks your watch
+session. Playback position is saved per title & episode — come back tomorrow
+and hit ▶ to resume exactly where you stopped. Navigate away mid-episode and a
+**mini-player** keeps it running.
+
+### 🤖 AI Discovery
+
+Describe a mood, get real titles: *"cozy animated film for kids"*, *"dark
+space thriller"*, *"something like Interstellar but newer"*. The Worker runs a
+fallback chain (**Gemini → Groq → Cloudflare Workers AI**) so recommendations
+keep working even if one provider is down. Each pick comes with a one-line
+**why**.
+
+### 🛡️ Privacy Center (all built in, no extensions needed)
+
+| Tool | What it does |
+|---|---|
+| **Ad Shield** | uBlock-style request blocker that runs on your device, with an editable `||domain^` filter list and a live blocked-counter |
+| **Secure DNS check** | One-tap test whether Cloudflare **1.1.1.1 encrypted DNS** is reachable on your network, plus 60-second setup guides for Windows, macOS, iOS/iPadOS and Android |
+| **Private Session** | Temporarily pauses all history/progress recording |
+| **Data Vault** | Export, import or wipe *everything* the app knows about you — one tap |
+
+### ⚡ Speed: cached everywhere, so it loads like magic
+
+| Cache layer | What it stores | TTL |
+|---|---|---|
+| **Cloudflare KV** (global) | Search results, title details, lists, OMDb ratings — the **first** viewer pays the upstream round-trip, **everyone after** reads from CF storage | search 24 h · details 7 d · lists 6 h · OMDb 7 d |
+| **Cloudflare R2** (persistent) | Every poster/backdrop/cast image — served from R2 after the first-ever fetch, never re-downloaded | forever |
+| **Cloudflare Cache API** (per-colo edge) | Hot API responses + images | minutes–hours |
+| **IndexedDB** (your browser) | Your own history, library, watch progress, preferences | until you clear it |
+
+Result: the most popular searches and images are served in **milliseconds**
+from Cloudflare's network — no API keys in the browser, no upstream hammering.
+
+### 🖥️ Works on every screen
+
+- 📱 **Mobile** — bottom navigation, safe-area aware, installable as a PWA
+- 💻 **Laptop / Desktop** — full glass sidebar + keyboard shortcuts (`/` to search)
+- 📺 **TV** — 10-foot UI with spatial (D-pad / arrow-key / remote) navigation
+
+---
 
 ## 🧱 Tech stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 16 (static export SPA), React 19, TypeScript, Tailwind CSS 4, Lucide icons |
+| Frontend | Next.js 16 (static-export SPA), React 19, TypeScript, Tailwind CSS 4, Lucide icons |
 | Local storage | Dexie.js (IndexedDB) — history, library, progress, preferences |
 | Edge runtime | Cloudflare Workers (zero-dependency TypeScript worker) |
-| Static hosting | Cloudflare Workers Static Assets (SPA fallback), custom domain |
-| Metadata | TMDB v3/v4 API (via the Worker only) |
-| Ratings enrichment | OMDb API (via the Worker only) |
-| AI | Gemini → Groq → Workers AI fallback chain (via the Worker only) |
-| Storage | Cloudflare R2 (images) + KV (metadata cache) + Cache API (edge) |
+| Static hosting | Cloudflare Workers Static Assets (SPA fallback) + custom domain |
+| Metadata | TMDB v3/v4 API (called only by the Worker) |
+| Ratings | OMDb API (cached 7 days in KV) |
+| AI | Gemini → Groq → Cloudflare Workers AI fallback chain |
+| Storage | Cloudflare R2 (images) · KV (metadata/search cache) · Cache API (edge) |
 
-## 🏗️ Architecture
+## 🏗️ Architecture in one picture
 
 ```
-Browser (SPA, IndexedDB, zero keys)
+Browser (SPA + IndexedDB — holds ZERO keys)
    │
-   ├─ /api/media ─►  Worker  ─►  Cache API (L1) ─► KV (L2, incl. 24 h search cache) ─► TMDB
-   ├─ /api/img   ─►  Worker  ─►  R2 (persistent) ─► Cache API ─► image.tmdb.org
-   ├─ /api/omdb  ─►  Worker  ─►  KV (7 d) ─► OMDb (key injected server-side)
-   ├─ /api/ai    ─►  Worker  ─►  Gemini ─► Groq ─► Workers AI
-   └─ /watch/*   ─►  VidLink embed (third-party player)
+   ├─ /api/media ─► Worker ─► Cache API (L1) ─► KV (L2, 24 h search cache) ─► TMDB
+   ├─ /api/img   ─► Worker ─► R2 (persistent) ─► Cache API ─► image.tmdb.org
+   ├─ /api/omdb  ─► Worker ─► KV (7 d) ─► OMDb (key injected server-side)
+   ├─ /api/ai    ─► Worker ─► Gemini ─► Groq ─► Workers AI
+   └─ /watch/*   ─► auto-fallback embed player (VidLink → mirrors)
 ```
 
-The full deep-dive — including all four architecture diagrams, caching-layer
-tables, the data flow for every endpoint and the security model — lives in
-**[ARCHITECTURE.md](./ARCHITECTURE.md)**.
+The full deep-dive — all four architecture diagrams, caching tables, per-endpoint
+data flow and the security model — lives in **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
 
 ## 📁 Project structure
 
@@ -74,60 +166,63 @@ tables, the data flow for every endpoint and the security model — lives in
 │  ├─ app/                 # Next.js App Router (single-route SPA shell)
 │  ├─ components/          # views (home/search/browse/detail/watch/…), media, player, ai, ui
 │  ├─ hooks/               # use-mobile, use-toast
-│  ├─ lib/                 # api client, Dexie schema, router, services, types, demo catalog
+│  ├─ lib/                 # api client, Dexie schema, router, services (incl. search-engine.ts), types
 │  └─ legacy-api/          # retired sandbox-only routes (not built; kept for reference)
 ├─ worker/
-│  ├─ src/worker.ts        # zero-dep Cloudflare Worker (API + static assets + security headers)
-│  ├─ src/media-gateway.ts # /api/media: TMDB mapping, unified model, cache tiers
+│  ├─ src/worker.ts        # zero-dep Cloudflare Worker (API + static assets + SEO/AEO layer)
+│  ├─ src/media-gateway.ts # /api/media: TMDB mapping, unified model, KV cache tiers
+│  ├─ src/seo.ts           # crawler head-patching, sitemap, bot pages
 │  ├─ wrangler.jsonc       # bindings: ASSETS, KV(CACHE), R2(IMAGES), Workers AI
 │  ├─ deploy.sh            # credential-aware deploy script
 │  └─ .dev.vars.example    # template for local `wrangler dev` secrets
 ├─ docs/
 │  ├─ diagrams/            # architecture figures
-│  └─ screenshots/         # UI screenshots
-├─ public/                 # PWA manifest, icons, robots.txt
-└─ prisma/                 # scaffold schema (unused by the app — it is local-first)
+│  └─ screenshots/         # real UI screenshots (desktop / tablet / mobile)
+├─ public/                 # PWA manifest, favicon set, robots.txt
+└─ prisma/                 # scaffold schema (unused — the app is local-first)
 ```
 
-## 🚀 Getting started
+---
+
+## 🚀 Run your own copy (developer guide)
 
 ### Prerequisites
 
 - [Bun](https://bun.sh) ≥ 1.2 (or Node.js ≥ 20 + npm)
 - A free [TMDB](https://www.themoviedb.org/settings/api) account → **API v4 Read Access Token**
-- A (free) [Cloudflare](https://dash.cloudflare.com) account for deployment
-- Optional keys: [OMDb](https://www.omdbapi.com/apikey.aspx), [Google AI Studio](https://aistudio.google.com) (Gemini), [Groq](https://console.groq.com)
+- A free [Cloudflare](https://dash.cloudflare.com) account for deployment
+- Optional: [OMDb](https://www.omdbapi.com/apikey.aspx), [Google AI Studio](https://aistudio.google.com) (Gemini), [Groq](https://console.groq.com)
 
-### 1. Install & run locally
+### 1 · Install & run locally
 
 ```bash
 bun install
-bun run dev          # Next.js dev server on http://localhost:3000
+bun run dev          # dev server on http://localhost:3000
 ```
 
-The app runs with its built-in demo catalog until a Worker API is available.
+> The app shows a built-in demo catalog until a Worker API is connected, so
+> you can develop the UI with zero keys.
 
-### 2. Build the static SPA
+### 2 · Build the static SPA
 
 ```bash
-bun run build        # outputs the static export to ./out
+bun run build        # static export → ./out
 ```
 
-### 3. Deploy to Cloudflare
+### 3 · Deploy to Cloudflare
 
 ```bash
-# credentials (git-ignored, never committed):
-#   ../.env.cloudflare  →  CLOUDFLARE_API_TOKEN=…  /  CLOUDFLARE_ACCOUNT_ID=…
+# credentials live in a git-ignored file the deploy script reads:
+#   .env.cloudflare  →  CLOUDFLARE_API_TOKEN=…  /  CLOUDFLARE_ACCOUNT_ID=…
 cd worker
-./deploy.sh          # deploys Worker + ./out static assets + custom domain route
+./deploy.sh          # deploys Worker + ./out assets + custom domain
 ```
 
-**Automatic deploys** — `.github/workflows/deploy.yml` builds and deploys on
+**Or let GitHub do it** — `.github/workflows/deploy.yml` builds & deploys on
 every push to `main`. One-time setup: add `CLOUDFLARE_API_TOKEN` and
-`CLOUDFLARE_ACCOUNT_ID` as repository secrets (Settings → Secrets → Actions);
-Worker runtime secrets are managed separately and are never touched.
+`CLOUDFLARE_ACCOUNT_ID` under *Settings → Secrets and variables → Actions*.
 
-### 4. Provision secrets (never in the repo!)
+### 4 · Provision secrets (never commit these!)
 
 ```bash
 cd worker
@@ -138,8 +233,8 @@ bunx wrangler secret put GROQ_API_KEY      # AI tier 2 (optional)
 bunx wrangler secret put TMDB_DEMO_KEY     # v3 api_key fallback (optional)
 ```
 
-For local `wrangler dev`, copy `worker/.dev.vars.example` → `worker/.dev.vars`
-and fill the same values. `.dev.vars` is git-ignored.
+For local `wrangler dev`: copy `worker/.dev.vars.example` → `worker/.dev.vars`
+and fill the same values (`.dev.vars` is git-ignored).
 
 ## 🔐 Secrets & key handling
 
@@ -149,6 +244,29 @@ deliberately excluded from `wrangler.jsonc` and injected from the
 `CLOUDFLARE_ACCOUNT_ID` environment variable at deploy time. The full policy —
 including what to do if a key leaks — is documented in
 **[SECURITY.md](./SECURITY.md)**.
+
+---
+
+## ❓ FAQ (beginner-friendly)
+
+**Is it free?** Yes. The site runs entirely on Cloudflare's free tier and
+TMDB's free API.
+
+**Do I need an account?** No — there is no signup, no login, no email. Your
+watchlist and history live in *your browser only*.
+
+**Where is my data stored?** In your browser's IndexedDB. Clearing it (Privacy
+Center → Data Vault → Wipe, or clearing site data) removes everything.
+
+**Does the app host any videos?** No. Playback uses third-party embeds; the
+app hosts none of the content. If an embed source is down, the player
+auto-falls-back to the next one.
+
+**Why is search so fast?** Results are cached in Cloudflare KV on first fetch
+and served from the edge to everyone after — repeat searches never touch TMDB.
+
+**Can I use it on my TV?** Yes — open the site in a TV browser; arrow/remote
+keys navigate the 10-foot UI.
 
 ## 🗺️ Roadmap / known issues
 
@@ -160,8 +278,8 @@ including what to do if a key leaks — is documented in
 
 - This product uses the **TMDB API** but is not endorsed or certified by [TMDB](https://www.themoviedb.org).
 - Ratings metadata via the [OMDb API](https://www.omdbapi.com).
-- Playback uses third-party **VidLink** embeds; this project hosts no video content itself.
-- All user data stays in the visitor's browser (IndexedDB) — there is no account system and no analytics.
+- Playback uses third-party embeds; this project hosts no video content itself.
+- All user data stays in the visitor's browser (IndexedDB) — no account system, no analytics.
 
 ## 📄 License
 
