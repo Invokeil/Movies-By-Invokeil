@@ -15,8 +15,12 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   alternates: { canonical: "/" },
   icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
   },
   openGraph: {
     title: "Movies by InvokeIL — Discover Movies, TV Series & Anime",

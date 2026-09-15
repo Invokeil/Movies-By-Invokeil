@@ -14,7 +14,7 @@ import {
 import { historyStore, progressStore, favoritesStore, watchlistStore, searchStore, mediaStore, aiStore } from '@/lib/db/stores'
 import { GlassPanel, GlassButton, Chip, SectionTitle } from '../ui-custom/glass'
 import { Switch } from '@/components/ui/switch'
-import { cn } from '@/lib/utils'
+import { cn, setPageTitle } from '@/lib/utils'
 import { toast } from 'sonner'
 
 /* ── Privacy Center — the control room for everything local ───────────

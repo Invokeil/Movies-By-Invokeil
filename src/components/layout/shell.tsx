@@ -40,7 +40,9 @@ export function Brand({ compact = false, className }: { compact?: boolean; class
 
 const NAV: { view: View; icon: React.ElementType; label: string; match: (v: View) => boolean }[] = [
   { view: { name: 'home' }, icon: Home, label: 'Home', match: (v) => v.name === 'home' },
-  { view: { name: 'search' }, icon: Search, label: 'Search', match: (v) => v.name === 'search' },
+  /* Search intentionally lives ONLY in the desktop utility bar (glass pill
+     with the `/` hint) and the mobile bottom nav — a third sidebar entry
+     duplicated both. Matches the search VIEW so nothing else changes.   */
   { view: { name: 'browse', kind: 'movie' }, icon: Film, label: 'Movies', match: (v) => v.name === 'browse' && v.kind === 'movie' },
   { view: { name: 'browse', kind: 'tv' }, icon: Tv, label: 'TV Shows', match: (v) => v.name === 'browse' && v.kind === 'tv' },
   { view: { name: 'browse', kind: 'anime' }, icon: Popcorn, label: 'Anime', match: (v) => v.name === 'browse' && v.kind === 'anime' },

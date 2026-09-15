@@ -62,13 +62,14 @@ export const mediaService = {
   byGenre: (genre: string) => fetchList(`genre:${genre}`, `list=genre&genre=${encodeURIComponent(genre)}`),
   similar: (id: string) => fetchList(`similar:${id}`, `action=similar&id=${encodeURIComponent(id)}`),
 
-  async search(q: string): Promise<UnifiedMedia[]> {
-    const key = q.trim().toLowerCase()
-    if (!key) return []
+  async search(q: string, type?: 'movie' | 'tv' | 'anime'): Promise<UnifiedMedia[]> {
+    const key = `${type ? `${type}:` : ''}${q.trim().toLowerCase()}`
+    if (!q.trim()) return []
     const local = await mediaStore.searchCache(key)
     if (local) return local
     try {
-      const r = await fetch(`${API_BASE}/api/media?action=search&q=${encodeURIComponent(q)}`)
+      const tp = type ? `&type=${encodeURIComponent(type)}` : ''
+      const r = await fetch(`${API_BASE}/api/media?action=search&q=${encodeURIComponent(q)}${tp}`)
       const j = await r.json()
       const items: UnifiedMedia[] = j.results ?? []
       mediaStore.putSearch(key, items)

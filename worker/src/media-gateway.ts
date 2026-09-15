@@ -548,6 +548,25 @@ async function handleGenre(env: Env, sp: URLSearchParams): Promise<Response> {
 async function handleSearch(env: Env, sp: URLSearchParams): Promise<Response> {
   const q = (sp.get('q') ?? '').trim()
   if (!q) return respond(env, { results: [] }, 200, 'MISS')
+  const type = sp.get('type') ?? ''
+  const typeOk = type === 'movie' || type === 'tv' || type === 'anime' ? type : ''
+
+  /* L1 persistent search cache — the FIRST user to search a title pays the
+     TMDB round-trip; every later user (any device, any colo) gets the
+     ranked results straight from KV. 24 h TTL, empty results never cached
+     (avoids poisoning a query while TMDB indexing lags).                  */
+  const kv = env.CACHE
+  const kvSearchKey = kv
+    ? `searchres:${typeOk ? `${typeOk}:` : ''}${q.toLowerCase().slice(0, 200)}`
+    : null
+  if (kvSearchKey) {
+    try {
+      const stored = await kv.get<string>(kvSearchKey)
+      if (stored) return respond(env, JSON.parse(stored), 200, 'HIT')
+    } catch {
+      /* KV read failure → live pipeline */
+    }
+  }
 
   /* Intent parsing: extract a release year ("inception 2010") so exact
      title+year queries resolve first instead of multi-search failing. */
@@ -581,6 +600,7 @@ async function handleSearch(env: Env, sp: URLSearchParams): Promise<Response> {
   for (const it of items) {
     if (it.media_type !== 'movie' && it.media_type !== 'tv') continue // drop persons
     const m = slim(mapUnified(it, it.media_type, false))
+    if (typeOk && m.mediaType !== typeOk) continue // scope filter (movie|tv|anime)
     const tN = norm(m.title)
     const oN = norm(m.originalTitle)
     /* explicit year + known result year that disagrees → unrelated, drop */
@@ -601,7 +621,18 @@ async function handleSearch(env: Env, sp: URLSearchParams): Promise<Response> {
     results.push({ m, s })
   }
   results.sort((a, b) => b.s - a.s || b.m.popularity - a.m.popularity)
-  return respond(env, { results: results.slice(0, 24).map((r) => r.m) }, 200, cache)
+  const final = results.slice(0, 24).map((r) => r.m)
+
+  /* persist ranked results to KV (24 h) — repeat searches never touch TMDB */
+  if (final.length > 0 && kvSearchKey && kv) {
+    try {
+      await kv.put(kvSearchKey, JSON.stringify(final), { expirationTtl: 86_400 })
+    } catch {
+      /* best-effort */
+    }
+  }
+
+  return respond(env, { results: final }, 200, cache)
 }
 
 async function handleDetail(env: Env, sp: URLSearchParams): Promise<Response> {

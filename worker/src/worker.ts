@@ -229,19 +229,63 @@ async function imgProxy(env: Env, search: string): Promise<Response> {
   return out
 }
 
-/* ── OMDb proxy ──────────────────────────────────────────────────────── */
+/* ── OMDb proxy (KV-cached — one upstream hit per query, ever) ────────── */
 
 async function omdb(req: Request, env: Env, search: string): Promise<Response> {
   if (!env.OMDB_API_KEY) {
     return json(env, { ok: false, error: 'OMDB_API_KEY not configured — run: wrangler secret put OMDB_API_KEY' }, 503)
   }
+  /* cache key strips the apikey; params normalized so i=/t=&s= lookups of
+     the same title share one KV entry. 7-day TTL — OMDb data is static. */
   const params = new URLSearchParams(search)
+  params.delete('apikey')
+  params.sort()
+  const cacheKey = env.CACHE ? `omdb:${params.toString()}` : null
+  if (cacheKey) {
+    try {
+      const stored = await env.CACHE.get<string>(cacheKey)
+      if (stored) {
+        return new Response(stored, {
+          status: 200,
+          headers: {
+            'content-type': 'application/json; charset=utf-8',
+            ...cors(env),
+            'x-cache': 'HIT',
+            'x-content-type-options': 'nosniff',
+          },
+        })
+      }
+    } catch {
+      /* KV unavailable → live fetch */
+    }
+  }
+
   params.set('apikey', env.OMDB_API_KEY)
   const upstream = `https://www.omdbapi.com/?${params.toString()}`
 
   const res = await fetchWithTimeout(upstream, {}, 10_000)
   if (!res.ok) return json(env, { ok: false, error: `OMDb upstream ${res.status}` }, 502)
-  return json(env, await res.json(), 200)
+  const body = JSON.stringify(await res.json())
+
+  /* only cache successful lookups (Response false/error payloads stay live) */
+  try {
+    const parsed = JSON.parse(body) as { Response?: string }
+    if (parsed.Response === 'True' && cacheKey && env.CACHE) {
+      await env.CACHE.put(cacheKey, body, { expirationTtl: 604_800 })
+    }
+  } catch {
+    /* best-effort */
+  }
+
+  return new Response(body, {
+    status: 200,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      ...cors(env),
+      'x-cache': 'MISS',
+      'x-content-type-options': 'nosniff',
+    },
+  })
 }
 
 /* ── AI router: Gemini → Groq → graceful fallback ────────────────────── */

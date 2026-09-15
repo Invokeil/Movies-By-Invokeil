@@ -26,14 +26,17 @@ site stays fast and cheap while the browser never holds a single API key.
 ## ✨ Features
 
 - **Glassmorphism UI** — five soft-glass accent palettes (`#D8E2DC #FFE5D9 #FFCAD4 #F4ACB7 #9D8189`), switchable in Settings, with desktop + mobile layouts.
+- **Smart Search (one pill, every way to find something)** — a single glass pill (press `/` anywhere) that auto-detects intent: typo-tolerant title search ("incepiton" still finds *Inception*), genre detection with misspellings ("scify" → Sci-Fi, "horrro" → Horror), scope chips (Auto · Movies · TV · Anime · Genre), a full genre browser, and a **built-in AI Mode** that auto-engages when a query reads like a description.
 - **Real artwork everywhere** — posters, backdrops and cast photos are proxied through `/api/img` and **persisted in R2 on first fetch**, so every image after the first viewer is served from Cloudflare storage.
-- **Local-first behaviour** — watch history, continue-watching positions, My List and palette choice live in IndexedDB via Dexie. Clear them any time from Settings; nothing ever leaves the device.
+- **Global KV caching** — search results (24 h), title details (7 d) and lists (6 h) are stored in Cloudflare KV: the first viewer pays the TMDB round-trip, every viewer after that reads from CF storage. OMDb lookups are cached for 7 days. Repeat searches never touch TMDB/OMDb again.
+- **Local-first behaviour** — watch history, continue-watching positions, My List and palette choice live in IndexedDB via Dexie. Clear them any time from the Privacy Center; nothing ever leaves the device.
+- **Privacy Center** — a built-in uBlock-style Ad Shield (editable `||domain^` filter list + live blocked counter), Cloudflare 1.1.1.1 DoH status check with per-platform setup guides, a Private Session toggle that pauses all recording, and a one-tap Data Vault (export / import / wipe).
 - **Continue watching & mini-player** — resumable playback positions per title, a floating mini-player when you navigate away, and a library with Watching / Plan-to-watch tabs.
 - **AI recommendations** — a server-side fallback chain (Gemini → Groq → Cloudflare Workers AI) ranks candidate titles with a reason for each pick, with a 10-minute result cache.
 - **Search & browse** — multi-search across movies and TV, genre rows, mood discovery, trending / popular / top-rated / new-release rails, anime rail.
 - **Rich detail pages** — cast, runtime, seasons, tagline, IMDb rating / Metascore / awards enrichment via OMDb, and similar-title recommendations.
 - **VidLink player** — embedded playback per movie/TV episode with a graceful fallback panel (including an "open in new tab" escape hatch) when an embed cannot start.
-- **Edge-cached metadata** — every `/api/media` response passes through the Cache API (L1) and KV (L2) before hitting TMDB, so repeat views are served without an upstream call.
+- **TV-ready** — 10-foot TV mode with spatial (D-pad/remote) navigation, plus complete PWA icons (SVG + raster favicon set + maskable) for installability on every platform.
 
 ## 🧱 Tech stack
 
@@ -53,9 +56,9 @@ site stays fast and cheap while the browser never holds a single API key.
 ```
 Browser (SPA, IndexedDB, zero keys)
    │
-   ├─ /api/media ─►  Worker  ─►  Cache API (L1) ─► KV (L2) ─► TMDB
+   ├─ /api/media ─►  Worker  ─►  Cache API (L1) ─► KV (L2, incl. 24 h search cache) ─► TMDB
    ├─ /api/img   ─►  Worker  ─►  R2 (persistent) ─► Cache API ─► image.tmdb.org
-   ├─ /api/omdb  ─►  Worker  ─►  OMDb (key injected server-side)
+   ├─ /api/omdb  ─►  Worker  ─►  KV (7 d) ─► OMDb (key injected server-side)
    ├─ /api/ai    ─►  Worker  ─►  Gemini ─► Groq ─► Workers AI
    └─ /watch/*   ─►  VidLink embed (third-party player)
 ```
@@ -146,8 +149,7 @@ including what to do if a key leaks — is documented in
 
 - Home feed personalisation v2 — behaviour-driven rails are in place; default demo entries still appear for brand-new sessions with no history.
 - VidLink embed diagnostics — some environments trigger the graceful fallback panel; the "open in new tab" escape hatch works in all of them.
-- Search-page AI mode hardening (Gemini region restrictions currently shift load to Groq / Workers AI tiers).
-- Optional service worker for full offline PWA support.
+- Optional service worker for full offline PWA support (the Ad Shield already ships as a service worker when armed).
 
 ## ⚖️ Attribution & disclaimer
 

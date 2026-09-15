@@ -23,7 +23,7 @@ free tier, with the browser holding zero credentials.
 ┌──────────────▼──────────────────── Cloudflare Worker ─────────────────┐
 │  /api/media   metadata gateway      → Cache API → KV → TMDB           │
 │  /api/img     image proxy           → R2 → Cache API → image.tmdb.org │
-│  /api/omdb    ratings enrichment    → OMDb (key injected)             │
+│  /api/omdb    ratings enrichment    → KV (7 d) → OMDb (key injected)  │
 │  /api/ai      AI recommendation     → Gemini → Groq → Workers AI      │
 │  /api/tmdb/*  raw TMDB passthrough  → edge-cached                     │
 │  /health      liveness probe                                          │
@@ -48,7 +48,11 @@ deploy.
    always works; API keys are stripped from cache keys. TTLs: lists 5 min,
    detail 10 min, search/mood 60 s. Hit → `x-cache: HIT`, zero upstream cost.
 2. **KV (L2, global)** — `media:`-prefixed JSON entries with 6 h (lists) /
-   7 d (detail) TTLs survive cache eviction and cold colos.
+   7 d (detail) TTLs survive cache eviction and cold colos. Search results are
+   cached **after ranking** under `searchres:<query>[.<type>]` for 24 h, so
+   the first viewer pays the TMDB round-trip and every later search — from
+   any user, any device — is served straight from CF storage. Empty result
+   sets are never cached (a TMDB indexing lag can't poison a query).
 3. **TMDB upstream** — Bearer token auth when `TMDB_API_TOKEN` is set,
    otherwise an optional provisioned v3 `TMDB_DEMO_KEY` secret; 12 s timeout;
    every failure degrades to `200 {results:[]}` (only `detail` can 404) so the
@@ -56,7 +60,15 @@ deploy.
 4. **Mapping** — TMDB payloads are normalised into `UnifiedMedia`
    (`id: "movie-123" | "tv-456"`, `mediaType: 'anime'` for Japanese-animation
    TV, poster/backdrop/profile paths, cast, seasons, ratings…), which the
-   client renders directly.
+   client renders directly. `action=search` also accepts an optional
+   `&type=movie|tv|anime` scope filter applied after ranking.
+
+On the client, `src/lib/services/search-engine.ts` adds a local intent layer
+on top of this contract: genre-alias detection with typo tolerance
+(Levenshtein ≤ 2), "did you mean" correction against recent searches +
+genres, deterministic spelling-variant retries, descriptive-query detection
+that hands off to AI Mode, and a merge step that ranks title matches above
+genre-browse results.
 
 ## 3. Image pipeline (`/api/img`)
 
