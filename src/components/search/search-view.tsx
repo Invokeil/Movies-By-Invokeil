@@ -114,7 +114,7 @@ export function SearchView({ initialQuery = '' }: { initialQuery?: string }) {
       }
 
       if (!data) {
-        let profile: Record<string, unknown> = {}
+        let profile: Record<string, unknown> | import('@/lib/types').TasteProfile = {}
         if (prefs.personalization) {
           try { profile = await buildTasteProfile() } catch { profile = {} } // profile must never kill AI mode
         }

@@ -8,6 +8,7 @@ import { API_BASE } from '../api'
 
 async function fetchList(key: string, params: string): Promise<UnifiedMedia[]> {
   const cached = await mediaStore.getList(key)
+  const staleRef = cached // keep a typed reference — TS narrows `cached` to never below
   if (cached && !cached.stale) return cached.items
 
   if (cached) {
@@ -27,13 +28,14 @@ async function fetchList(key: string, params: string): Promise<UnifiedMedia[]> {
     mediaStore.putList(key, items)
     return items
   } catch {
-    return cached?.items ?? [] // offline fallback: stale cache
+    return staleRef?.items ?? [] // offline fallback: stale cache
   }
 }
 
 export const mediaService = {
   async detail(id: string): Promise<UnifiedMedia | null> {
     const cached = await mediaStore.getDetail(id)
+    const staleRef = cached // keep a typed reference — TS narrows `cached` to never below
     if (cached && !cached.stale) return cached.media
     if (cached) {
       fetch(`${API_BASE}/api/media?action=detail&id=${encodeURIComponent(id)}`)
@@ -49,7 +51,7 @@ export const mediaService = {
       await mediaStore.putDetail(j.result)
       return j.result as UnifiedMedia
     } catch {
-      return cached?.media ?? null // offline fallback: stale data
+      return staleRef?.media ?? null // offline fallback: stale data
     }
   },
 
