@@ -8,7 +8,7 @@ import { searchStore } from '@/lib/db/stores'
 import { useApp } from '@/lib/store'
 import { MediaCard, CardSkeleton } from '../media/media-card'
 import { GlassPanel, GlassButton, Chip, EmptyState, SectionTitle } from '../ui-custom/glass'
-import { cn } from '@/lib/utils'
+import { cn, setPageTitle } from '@/lib/utils'
 import { toast } from 'sonner'
 import { API_BASE } from '@/lib/api'
 
@@ -34,6 +34,11 @@ export function SearchView({ initialQuery = '' }: { initialQuery?: string }) {
 
   useEffect(() => { inputRef.current?.focus() }, [])
   useEffect(() => { searchStore.recent().then(setRecent) }, [])
+  /* tab title sync — shows the active query */
+  useEffect(() => {
+    setPageTitle(query.trim() ? `Search: ${query.trim()}` : 'Search')
+    return () => setPageTitle()
+  }, [query])
 
   /* keep the URL in sync: /search?q=… becomes a shareable, history-friendly
      deep link (replaceState — no history spam while typing)                */

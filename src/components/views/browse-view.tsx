@@ -8,7 +8,7 @@ import { mediaService } from '@/lib/services/media'
 import { ALL_GENRES } from '@/lib/data/catalog'
 import { MediaCard, CardSkeleton } from '../media/media-card'
 import { Chip, EmptyState, GlassButton, SectionTitle, GlassPanel } from '../ui-custom/glass'
-import { cn } from '@/lib/utils'
+import { cn, setPageTitle } from '@/lib/utils'
 
 /* ── Browse (CinemaOS) — URL-synced filters, responsive grid ──────────
    ?genre= lives in the address bar (/movies?genre=Action), so filtered
@@ -23,6 +23,11 @@ const TITLES: Record<MediaType, { title: string; subtitle: string }> = {
 const PAGE = 24
 
 export function BrowseView({ kind, genre: initialGenre }: { kind: MediaType; genre?: string }) {
+  /* tab title sync */
+  useEffect(() => {
+    setPageTitle(kind === 'movie' ? 'Movies — Browse & Filter' : kind === 'tv' ? 'TV Series — Browse & Filter' : 'Anime — Browse & Filter')
+    return () => setPageTitle()
+  }, [kind])
   const { view } = useApp()
   const [items, setItems] = useState<UnifiedMedia[]>([])
   const [loading, setLoading] = useState(true)

@@ -16,7 +16,7 @@ import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { THEMES } from '@/lib/themes'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
+import { cn, setPageTitle } from '@/lib/utils'
 
 function Section({
   icon: Icon, title, subtitle, children,
@@ -59,6 +59,11 @@ function Row({
 }
 
 export function SettingsView() {
+  /* tab title sync */
+  useEffect(() => {
+    setPageTitle('Settings')
+    return () => setPageTitle()
+  }, [])
   const { prefs, setPrefs, navigate } = useApp()
   const [stats, setStats] = useState({ usageMB: 0, quotaMB: 0, entries: 0, history: 0, lists: 0 })
   const fileInput = useRef<HTMLInputElement>(null)

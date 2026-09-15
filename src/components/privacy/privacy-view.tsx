@@ -33,6 +33,11 @@ const DNS_GUIDES: { platform: string; steps: string }[] = [
 ]
 
 export function PrivacyView() {
+  /* tab title sync */
+  useEffect(() => {
+    setPageTitle('Privacy Center')
+    return () => setPageTitle()
+  }, [])
   const { prefs, setPrefs } = useApp()
   const [blocked, setBlocked] = useState(prefs.adShield.blockedCount)
   const [rulesDraft, setRulesDraft] = useState('')

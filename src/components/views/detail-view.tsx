@@ -9,7 +9,7 @@ import { watchlistStore, favoritesStore, progressStore } from '@/lib/db/stores'
 import { SmartPoster, SmartAvatar } from '../media/smart-poster'
 import { GlassPanel, GlassButton, Chip, RatingBadge, EmptyState } from '../ui-custom/glass'
 import { MediaRow } from '../media/media-row'
-import { cn } from '@/lib/utils'
+import { cn, setPageTitle } from '@/lib/utils'
 import { toast } from 'sonner'
 
 /* ── CinemaOS Detail — cinematic hero + info grid ───────────────────── */
@@ -32,6 +32,7 @@ export function DetailView({ id }: { id: string }) {
       if (!alive) return
       setMedia(m)
       setLoading(false)
+      setPageTitle(m ? `${m.title}${m.year ? ` (${m.year})` : ''}` : 'Title not found')
       if (m) {
         const sim = await mediaService.similar(m.id)
         if (alive) setSimilar(sim)
@@ -43,7 +44,7 @@ export function DetailView({ id }: { id: string }) {
         }
       }
     })()
-    return () => { alive = false }
+    return () => { alive = false; setPageTitle() }
   }, [id])
 
   useEffect(() => {

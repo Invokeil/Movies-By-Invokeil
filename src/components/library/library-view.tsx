@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { setPageTitle } from '@/lib/utils'
 import { BookmarkCheck, Heart, History as HistoryIcon, PlayCircle, Trash2, Clock } from 'lucide-react'
 import type { UnifiedMedia, HistoryEntry } from '@/lib/types'
 import { useApp } from '@/lib/store'
@@ -30,6 +31,11 @@ function timeAgo(ts: number): string {
 }
 
 export function LibraryView({ tab = 'continue' }: { tab?: Tab }) {
+  /* tab title sync */
+  useEffect(() => {
+    setPageTitle('Your Library')
+    return () => setPageTitle()
+  }, [])
   const { navigate, libraryVersion } = useApp()
   const [active, setActive] = useState<Tab>(tab)
   const [items, setItems] = useState<UnifiedMedia[]>([])
