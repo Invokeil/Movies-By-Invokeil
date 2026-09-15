@@ -582,11 +582,11 @@ async function ai(req: Request, env: Env): Promise<Response> {
 /* ── SPA route hygiene (soft-404 guard + robots directives) ───────── */
 
 /* Routes the SPA owns — served as the app shell instead of a junk 404. */
-const SPA_PREFIXES = ['/watch', '/library', '/search', '/settings', '/ai', '/movies', '/tv', '/anime', '/movie', '/genre']
+const SPA_PREFIXES = ['/watch', '/library', '/search', '/settings', '/ai', '/privacy', '/movies', '/tv', '/anime', '/movie', '/genre']
 /* Utility/private routes that must stay out of the index (X-Robots-Tag on
    the raw shell). Indexable hubs (/movies · /tv · /anime) and SEO-rendered
    pages (/movie/{id} · /tv/{id} · /genre/{slug} · /) never reach here.    */
-const UTILITY_EXACT = ['/search', '/settings', '/ai']
+const UTILITY_EXACT = ['/search', '/settings', '/ai', '/privacy']
 const UTILITY_SUBPATHS = ['/watch', '/library', '/movie/', '/tv/', '/genre/', '/movies/', '/anime/']
 
 function isKnownSpaPath(p: string): boolean {

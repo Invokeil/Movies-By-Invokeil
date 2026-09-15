@@ -109,9 +109,9 @@ export function AIPanel() {
           >
             <div className="glass-strong flex h-full flex-col overflow-hidden rounded-3xl">
               {/* header */}
-              <div className="flex items-center justify-between gap-3 border-b border-white/60 p-5">
+              <div className="flex items-center justify-between gap-3 border-b border-white/10 p-5">
                 <div className="flex items-center gap-3">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-rose text-ink shadow-lg shadow-rose/30">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-rose text-white shadow-lg shadow-rose/30">
                     <Wand2 size={20} />
                   </span>
                   <div>
@@ -169,7 +169,7 @@ export function AIPanel() {
                         <div className="w-[92px] shrink-0 overflow-hidden rounded-2xl glass">
                           <SmartPoster media={m} size="w154" className="aspect-[2/3] w-full" />
                         </div>
-                        <div className="min-w-0 flex-1 rounded-2xl bg-white/40 p-3">
+                        <div className="min-w-0 flex-1 rounded-2xl bg-white/5 p-3">
                           <p className="truncate text-sm font-bold text-ink">{m.title}</p>
                           <p className="text-[11px] font-semibold text-mauve">{m.year} · {m.genres.join(' · ')}</p>
                           {reasons[m.id] && (
@@ -199,7 +199,7 @@ export function AIPanel() {
                     <p className="mb-3 text-[11px] text-mauve">Deterministic engine — works fully offline</p>
                     <div className="flex flex-col gap-2">
                       {localRecs.map((r) => (
-                        <div key={r.media.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white/40 px-4 py-3">
+                        <div key={r.media.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white/5 px-4 py-3">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-bold text-ink">{r.media.title}</p>
                             <p className="truncate text-[11px] font-semibold text-mauve">{r.reason}</p>
@@ -225,7 +225,7 @@ export function AIPanel() {
               </div>
 
               {/* footer */}
-              <div className="flex items-center justify-between gap-2 border-t border-white/60 p-4">
+              <div className="flex items-center justify-between gap-2 border-t border-white/10 p-4">
                 <p className="text-[10px] leading-snug text-mauve">
                   Privacy: raw history never leaves this device — AI receives an anonymized taste profile only.
                 </p>

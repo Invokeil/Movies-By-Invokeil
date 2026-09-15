@@ -82,7 +82,7 @@ export function SmartAvatar({ name, profilePath, size = 'w185', className }: Sma
   return (
     <span
       className={cn(
-        'relative inline-flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-b from-[#F4ACB7] to-[#9D8189]',
+        'relative inline-flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-rose',
         className
       )}
     >
@@ -104,7 +104,7 @@ export function SmartAvatar({ name, profilePath, size = 'w185', className }: Sma
       <span
         aria-hidden
         className={cn(
-          'text-sm font-extrabold leading-none text-[#44353B] transition-opacity duration-500',
+          'text-sm font-extrabold leading-none text-white transition-opacity duration-500',
           state === 'loaded' ? 'opacity-0' : 'opacity-100'
         )}
       >

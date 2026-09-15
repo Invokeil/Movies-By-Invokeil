@@ -1,14 +1,13 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { BookmarkCheck, Heart, History as HistoryIcon, PlayCircle, Trash2, Download, Clock } from 'lucide-react'
+import { BookmarkCheck, Heart, History as HistoryIcon, PlayCircle, Trash2, Clock } from 'lucide-react'
 import type { UnifiedMedia, HistoryEntry } from '@/lib/types'
 import { useApp } from '@/lib/store'
-import { watchlistStore, favoritesStore, historyStore, progressStore } from '@/lib/db/stores'
+import { watchlistStore, favoritesStore, historyStore } from '@/lib/db/stores'
 import { MediaCard, CardSkeleton } from '../media/media-card'
 import { ContinueRow, ContinueEmpty } from '../media/continue-row'
 import { GlassPanel, EmptyState, Chip, SectionTitle } from '../ui-custom/glass'
-import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
 type Tab = 'watchlist' | 'favorites' | 'history' | 'continue'
@@ -57,7 +56,7 @@ export function LibraryView({ tab = 'continue' }: { tab?: Tab }) {
   return (
     <div className="flex flex-col gap-6 pb-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <SectionTitle title="Your Library" subtitle="Private to this browser — export anytime from Settings" />
+        <SectionTitle title="Your Library" subtitle="Private to this browser — export anytime from Privacy Center" />
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -75,14 +74,14 @@ export function LibraryView({ tab = 'continue' }: { tab?: Tab }) {
       )}
 
       {loading && active !== 'continue' && (
-        <div className="flex flex-wrap gap-4">
+        <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 md:gap-4">
           {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} index={i} />)}
         </div>
       )}
 
       {!loading && (active === 'watchlist' || active === 'favorites') && (
         items.length > 0 ? (
-          <div className="flex flex-wrap gap-4">
+          <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 md:gap-4">
             {items.map((m, i) => <MediaCard key={m.id} media={m} index={i} />)}
           </div>
         ) : (
@@ -105,17 +104,17 @@ export function LibraryView({ tab = 'continue' }: { tab?: Tab }) {
               <p className="text-sm font-bold text-ink">{history.length} entries in IndexedDB</p>
               <button
                 onClick={clearHistory}
-                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-mauve transition-colors hover:bg-rose/20 hover:text-ink"
+                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-mauve transition-colors hover:bg-rose/15 hover:text-rose"
               >
                 <Trash2 size={13} /> Clear history
               </button>
             </div>
-            <div className="scrollbar-thin max-h-[520px] overflow-y-auto border-t border-white/60">
+            <div className="scrollbar-thin max-h-[520px] overflow-y-auto border-t border-white/8">
               {history.map((h) => (
                 <button
                   key={`${h.mediaId}:${h.season ?? 0}:${h.episode ?? 0}:${h.watchedAt}`}
                   onClick={() => navigate({ name: 'detail', id: h.mediaId })}
-                  className="flex w-full items-center gap-4 border-b border-white/40 px-5 py-3.5 text-left transition-colors last:border-0 hover:bg-white/45"
+                  className="flex w-full items-center gap-4 border-b border-white/5 px-5 py-3.5 text-left transition-colors last:border-0 hover:bg-white/5"
                 >
                   <span className="glass flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-ink">
                     <Clock size={15} />
@@ -127,7 +126,7 @@ export function LibraryView({ tab = 'continue' }: { tab?: Tab }) {
                     </p>
                     <p className="text-xs text-mauve">{h.mediaType === 'movie' ? 'Movie' : h.mediaType === 'tv' ? 'TV' : 'Anime'} · {timeAgo(h.watchedAt)}</p>
                   </div>
-                  {h.completed && <span className="rounded-full bg-mint px-2.5 py-0.5 text-[10px] font-extrabold text-ink">COMPLETED</span>}
+                  {h.completed && <span className="rounded-full bg-gradient-mint px-2.5 py-0.5 text-[10px] font-extrabold text-black">COMPLETED</span>}
                 </button>
               ))}
             </div>
@@ -136,7 +135,7 @@ export function LibraryView({ tab = 'continue' }: { tab?: Tab }) {
           <EmptyState
             icon={<HistoryIcon size={26} />}
             title="No watch history"
-            body="Anything you open in the Watch page is recorded here — strictly on this device."
+            body="Anything you open in the Watch page is recorded here — strictly on this device. Turn on Private Session in the Privacy Center to pause recording."
           />
         )
       )}

@@ -16,8 +16,12 @@ export function viewToURL(v: View): string {
       return '/'
     case 'search':
       return v.q ? `/search?q=${encodeURIComponent(v.q)}` : '/search'
-    case 'browse':
-      return v.kind === 'movie' ? '/movies' : `/${v.kind}`
+    case 'browse': {
+      const genre = new URLSearchParams(
+        v.name === 'browse' && 'genre' in v && v.genre ? `genre=${encodeURIComponent(v.genre)}` : ''
+      ).toString()
+      return v.kind === 'movie' ? `/movies${genre ? `?${genre}` : ''}` : `/${v.kind}${genre ? `?${genre}` : ''}`
+    }
     case 'detail': {
       const i = v.id.indexOf('-')
       return `/${v.id.slice(0, i)}/${v.id.slice(i + 1)}`
@@ -32,6 +36,8 @@ export function viewToURL(v: View): string {
     }
     case 'library':
       return `/library/${v.tab ?? 'continue'}`
+    case 'privacy':
+      return '/privacy'
     case 'settings':
       return '/settings'
     default:
@@ -49,13 +55,13 @@ export function urlToView(pathname: string, search: string): View {
     case 'search':
       return { name: 'search', q: sp.get('q') ?? '' }
     case 'movies':
-      return { name: 'browse', kind: 'movie' as MediaType }
+      return { name: 'browse', kind: 'movie' as MediaType, genre: sp.get('genre') ?? undefined }
     case 'anime':
-      return { name: 'browse', kind: 'anime' as MediaType }
+      return { name: 'browse', kind: 'anime' as MediaType, genre: sp.get('genre') ?? undefined }
     case 'tv':
-      return seg[1] ? { name: 'detail', id: `tv-${seg[1]}` } : { name: 'browse', kind: 'tv' as MediaType }
+      return seg[1] ? { name: 'detail', id: `tv-${seg[1]}` } : { name: 'browse', kind: 'tv' as MediaType, genre: sp.get('genre') ?? undefined }
     case 'movie':
-      return seg[1] ? { name: 'detail', id: `movie-${seg[1]}` } : { name: 'browse', kind: 'movie' as MediaType }
+      return seg[1] ? { name: 'detail', id: `movie-${seg[1]}` } : { name: 'browse', kind: 'movie' as MediaType, genre: sp.get('genre') ?? undefined }
     case 'watch':
       return seg[1] && seg[2]
         ? {
@@ -71,6 +77,8 @@ export function urlToView(pathname: string, search: string): View {
         : 'continue'
       return { name: 'library', tab }
     }
+    case 'privacy':
+      return { name: 'privacy' }
     case 'settings':
       return { name: 'settings' }
     default:

@@ -60,6 +60,8 @@ export const mediaStore = {
     const all = await idb.all<CacheEnvelope<unknown>>('media')
     return { entries: all?.length ?? 0 }
   },
+
+  clear() { return idb.clear('media') },
 }
 
 /* ── History ─────────────────────────────────────────────────────────── */
@@ -173,12 +175,24 @@ export const recommendationStore = {
 
 /* ── Settings / preferences ──────────────────────────────────────────── */
 
+export interface AdShieldPrefs {
+  enabled: boolean
+  customRules: string[]    // user-authored lines (uBlock-style: ||domain^ and ##selector)
+  blockedCount: number     // lifetime count of blocked requests (approximate)
+}
+
 export interface Preferences {
-  glassIntensity: number   // 0.25 – 0.85
+  glassIntensity: number   // 0.25 – 0.85 (kept for compat; drives glass alpha)
   animations: boolean
   autoplayNext: boolean
   enableAI: boolean
   personalization: boolean
+  /* CinemaOS v2 */
+  theme: string            // theme id (see lib/themes.ts)
+  tvMode: boolean          // 10-foot UI + spatial navigation (TVs / remotes)
+  privateSession: boolean  // don't persist history / progress while on
+  secureDNS: boolean       // use Cloudflare DoH for connectivity checks + prefetch
+  adShield: AdShieldPrefs  // built-in request blocker (uBlock-style rules)
 }
 
 export const DEFAULT_PREFS: Preferences = {
@@ -187,12 +201,21 @@ export const DEFAULT_PREFS: Preferences = {
   autoplayNext: true,
   enableAI: true,
   personalization: true,
+  theme: 'obsidian',
+  tvMode: false,
+  privateSession: false,
+  secureDNS: false,
+  adShield: { enabled: false, customRules: [], blockedCount: 0 },
 }
 
 export const settingsStore = {
   async all(): Promise<Preferences> {
-    const saved = await idb.get<Preferences>('settings', 'prefs')
-    return { ...DEFAULT_PREFS, ...(saved ?? {}) }
+    const saved = await idb.get<Partial<Preferences>>('settings', 'prefs')
+    return {
+      ...DEFAULT_PREFS,
+      ...(saved ?? {}),
+      adShield: { ...DEFAULT_PREFS.adShield, ...(saved?.adShield ?? {}) },
+    }
   },
   save(p: Preferences) {
     return idb.put('settings', 'prefs', p)

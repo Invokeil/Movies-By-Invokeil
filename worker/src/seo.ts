@@ -752,6 +752,7 @@ export async function handleSEO(req: Request, env: Env): Promise<Response | null
       'Disallow: /watch',
       'Disallow: /library',
       'Disallow: /settings',
+      'Disallow: /privacy',
       'Disallow: /api/',
       '',
       `Sitemap: ${origin}/sitemap.xml`,
@@ -1008,6 +1009,22 @@ export async function handleSEO(req: Request, env: Env): Promise<Response | null
         noindex: true,
       },
       'ai:ui',
+      SHELL_TTL,
+    )
+  }
+
+  /* 8b — Privacy Center: utility route → noindex, own title */
+  if (path === '/privacy') {
+    return shellWithHead(
+      env,
+      req,
+      {
+        title: `Privacy Center — Ad Shield, Secure DNS & Local Data | ${SITE_NAME}`,
+        description: 'Built-in ad blocker, Cloudflare secure DNS setup, private session and a local data vault — everything stays on your device.',
+        canonical: `${origin}/privacy`,
+        noindex: true,
+      },
+      'privacy:ui',
       SHELL_TTL,
     )
   }

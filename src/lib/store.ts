@@ -132,6 +132,13 @@ export const useApp = g[storeKey]
 export function applyPrefsToDOM(p: Preferences) {
   if (typeof document === 'undefined') return
   const root = document.documentElement
-  root.style.setProperty('--glass-alpha', String(p.glassIntensity))
+  /* glass intensity is a RELATIVE scale on top of each theme's base alpha
+     (0.5 → ×1.0 neutral; 0.25 → ×0.5 subtle; 0.85 → ×1.7 heavy) */
+  root.style.setProperty('--glass-scale', String(Math.max(0.2, p.glassIntensity * 2)))
   document.body.classList.toggle('no-anim', !p.animations)
+  /* CinemaOS v2: theme + TV mode (the inline boot script handles first
+     paint from the localStorage mirror written here) */
+  root.classList.toggle('tv-mode', !!p.tvMode)
+  try { localStorage.setItem('il:theme', p.theme || 'obsidian') } catch { /* private mode */ }
+  void import('./themes').then(({ setTheme }) => setTheme(p.theme || 'obsidian'))
 }

@@ -46,7 +46,8 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
         setMedia(m)
         setLoading(false)
         if (!m) return
-        mediaService.logWatch(m, season, episode)
+        const { privateSession } = useApp.getState().prefs
+        if (!privateSession) mediaService.logWatch(m, season, episode)
         const saved = await progressStore.get(m.id, season, episode)
         const dur = m.mediaType === 'movie' ? (m.runtime ?? 110) * 60 : (m.episodeRuntime ?? 45) * 60
         setDuration(dur)
@@ -62,7 +63,9 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
   const handleEnd = useCallback(() => {
     if (!media) return
     ;(async () => {
-      await mediaService.saveProgress(media, 0.99 * duration, duration, season, episode)
+      if (!useApp.getState().prefs.privateSession) {
+        await mediaService.saveProgress(media, 0.99 * duration, duration, season, episode)
+      }
       if (prefs.autoplayNext && media.mediaType !== 'movie') {
         const s = media.seasons?.find((x) => x.season === season)
         if (s && (episode ?? 1) < s.episodes) {
@@ -106,9 +109,9 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
     return () => clearInterval(sim)
   }, [media, duration, prefs.animations])
 
-  /* persist progress every 10 s */
+  /* persist progress every 10 s (paused entirely during Private Session) */
   useEffect(() => {
-    if (!media) return
+    if (!media || useApp.getState().prefs.privateSession) return
     const saver = setInterval(() => {
       if (posRef.current - savedRef.current >= 10 && duration > 0) {
         savedRef.current = posRef.current
@@ -118,7 +121,7 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
     }, 5000)
     return () => {
       clearInterval(saver)
-      if (media && duration > 0 && posRef.current > 5) {
+      if (media && duration > 0 && posRef.current > 5 && !useApp.getState().prefs.privateSession) {
         mediaService.saveProgress(media, posRef.current, duration, season, episode)
       }
     }
@@ -243,7 +246,7 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
     <div className="flex flex-col gap-4 pb-6">
       {/* Player frame */}
       <div className="glass relative overflow-hidden rounded-3xl p-2">
-        <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-[#2b2226]">
+        <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-[#050507]">
           <iframe
             ref={iframeRef}
             key={`${id}-${season ?? 0}-${episode ?? 0}-${attemptIdx}`}
@@ -290,7 +293,7 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
           <span
             className={cn(
               'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold',
-              playerLive ? 'bg-emerald-100 text-emerald-800' : 'bg-white/50 text-mauve'
+              playerLive ? 'bg-mint/15 text-mint' : 'bg-white/5 text-mauve'
             )}
           >
             <Radio size={11} className={cn(playerLive && 'animate-pulse')} />
@@ -366,7 +369,7 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
               href={embedUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-full bg-gradient-rose px-4 py-2 text-xs font-bold text-ink shadow-lg transition hover:brightness-110"
+              className="rounded-full bg-gradient-rose px-4 py-2 text-xs font-bold text-white shadow-lg transition hover:brightness-110"
             >
               ▶ Open player in new tab
             </a>
@@ -407,7 +410,7 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
                 }}
                 className={cn(
                   'min-h-[44px] min-w-[52px] shrink-0 rounded-xl px-3 py-2 text-sm font-bold transition-all',
-                  ep === episode ? 'bg-gradient-rose text-ink shadow' : 'glass text-ink hover:brightness-105'
+                  ep === episode ? 'bg-gradient-rose text-white shadow' : 'glass text-ink hover:brightness-125'
                 )}
               >
                 {ep}

@@ -158,16 +158,16 @@ export function SearchView({ initialQuery = '' }: { initialQuery?: string }) {
           aria-label="Search"
         />
         {query && (
-          <button onClick={() => { setQuery(''); setResults([]) }} aria-label="Clear search" className="rounded-full p-1.5 text-mauve hover:bg-white/50 hover:text-ink">
+          <button onClick={() => { setQuery(''); setResults([]) }} aria-label="Clear search" className="rounded-full p-1.5 text-mauve hover:bg-white/10 hover:text-ink">
             <X size={17} />
           </button>
         )}
-        <div className="h-6 w-px bg-white/70" />
+        <div className="h-6 w-px bg-white/15" />
         <button
           onClick={() => { setAiMode(!aiMode); setResults([]); setQuery('') }}
           className={cn(
             'shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition-all',
-            aiMode ? 'bg-gradient-rose text-ink shadow' : 'text-mauve hover:bg-white/50'
+            aiMode ? 'bg-gradient-rose text-white shadow' : 'text-mauve hover:bg-white/10'
           )}
           aria-pressed={aiMode}
         >
@@ -203,8 +203,8 @@ export function SearchView({ initialQuery = '' }: { initialQuery?: string }) {
 
       {/* Results */}
       {loading || aiLoading ? (
-        <div className="flex flex-wrap gap-4">
-          {Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} index={i} />)}
+        <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 md:gap-4">
+          {Array.from({ length: 12 }).map((_, i) => <CardSkeleton key={i} index={i} />)}
         </div>
       ) : results.length > 0 ? (
         <>
@@ -212,12 +212,12 @@ export function SearchView({ initialQuery = '' }: { initialQuery?: string }) {
             title={`${results.length} result${results.length > 1 ? 's' : ''}`}
             subtitle={aiMode ? 'AI-ranked with personalized reasons' : 'Cached in IndexedDB for instant recall'}
           />
-          <div className="flex flex-wrap gap-4">
+          <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 md:gap-4">
             {results.map((m, i) => (
               <div key={m.id} className="relative">
                 <MediaCard media={m} index={i} />
                 {aiMode && aiReasons[m.id] && (
-                  <p className="mt-1 w-40 text-[11px] font-medium leading-snug text-mauve md:w-44">
+                  <p className="mt-1 line-clamp-3 text-[11px] font-medium leading-snug text-mauve">
                     ✦ {aiReasons[m.id]}
                   </p>
                 )}

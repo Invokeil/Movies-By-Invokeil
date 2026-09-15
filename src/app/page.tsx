@@ -3,18 +3,21 @@
 import { useEffect } from 'react'
 import { useApp } from '@/lib/store'
 import { initRouter } from '@/lib/router'
-import { Sidebar, BottomNav, TopBar } from '@/components/layout/shell'
+import { initSpatialNav, initShortcuts } from '@/lib/spatial'
+import { Sidebar, BottomNav, TopBar, DesktopBar } from '@/components/layout/shell'
 import { HomeView } from '@/components/views/home-view'
 import { SearchView } from '@/components/search/search-view'
 import { BrowseView } from '@/components/views/browse-view'
 import { DetailView } from '@/components/views/detail-view'
 import { WatchView } from '@/components/player/watch-view'
 import { LibraryView } from '@/components/library/library-view'
+import { PrivacyView } from '@/components/privacy/privacy-view'
 import { SettingsView } from '@/components/settings/settings-view'
 import { MiniPlayer } from '@/components/player/mini-player'
 import { AIPanel } from '@/components/ai/ai-panel'
+import { syncShield } from '@/lib/services/shield'
 
-/* ── Movies by invokeil — SPA shell ────────────────────────────────────
+/* ── Movies by InvokeIL — CinemaOS SPA shell ───────────────────────────
    Client-side view routing (single-route deployment, mirrors the React
    Router plan). Views mount/unmount; the player + prefs live in the
    global store so they survive navigation.                              */
@@ -27,13 +30,15 @@ function CurrentView() {
     case 'search':
       return <SearchView initialQuery={view.q} />
     case 'browse':
-      return <BrowseView kind={view.kind} />
+      return <BrowseView kind={view.kind} genre={view.genre} />
     case 'detail':
       return <DetailView id={view.id} />
     case 'watch':
       return <WatchView id={view.id} season={view.season} episode={view.episode} />
     case 'library':
       return <LibraryView tab={view.tab} />
+    case 'privacy':
+      return <PrivacyView />
     case 'settings':
       return <SettingsView />
     default:
@@ -43,11 +48,24 @@ function CurrentView() {
 
 export default function Page() {
   const loadPrefs = useApp((s) => s.loadPrefs)
+  const prefs = useApp((s) => s.prefs)
 
   useEffect(() => { loadPrefs() }, [loadPrefs])
 
   /* URL router: deep links + browser back/forward (see src/lib/router.ts) */
   useEffect(() => { initRouter() }, [])
+
+  /* Ad Shield follows the prefs toggle; runs once on load + on change */
+  useEffect(() => {
+    void syncShield(prefs.adShield)
+  }, [prefs.adShield])
+
+  /* TV mode spatial navigation + global shortcuts */
+  useEffect(() => initSpatialNav(), [])
+  useEffect(() => initShortcuts({
+    openSearch: () => useApp.getState().navigate({ name: 'search' }),
+    goBack: () => useApp.getState().back(),
+  }), [])
 
   /* ── Synthetic event shim ──────────────────────────────────────────
      Some dev setups (Turbopack + React 19.2) fail to register React's
@@ -59,7 +77,7 @@ export default function Page() {
     if (process.env.NODE_ENV !== 'development') return
     const findProps = (el: Element | null): Record<string, unknown> | null => {
       let node: Element | null = el
-      while (node && node !== document) {
+      while (node) {
         for (const k of Object.keys(node)) {
           if (k.startsWith('__reactProps$')) {
             return (node as unknown as Record<string, Record<string, unknown>>)[k]
@@ -111,27 +129,33 @@ export default function Page() {
 
   return (
     <div className="relative min-h-screen">
-      {/* liquid pastel background */}
+      {/* ambient background (theme-aware) */}
       <div className="app-bg" aria-hidden>
         <div className="blob blob-1" />
         <div className="blob blob-2" />
         <div className="blob blob-3" />
-        <div className="blob blob-4" />
       </div>
 
-      <div className="mx-auto flex max-w-[1500px]">
+      <div className="mx-auto flex max-w-[1600px]">
         <Sidebar />
 
-        <main className="min-w-0 flex-1 px-3 pb-28 md:px-6 md:pb-10 lg:px-8">
+        <main className="min-w-0 flex-1 px-3 pb-28 md:px-5 md:pb-10 lg:px-8">
           <TopBar />
+          <DesktopBar />
 
-          <div className="mt-3 md:mt-6">
+          <div className="mt-2 md:mt-4">
             <CurrentView />
           </div>
 
-          <footer className="mt-10 pb-4 text-center text-[11px] font-semibold text-mauve">
-            Movies by invokeil · Local-first · No account · Data stored in your browser ·
-            Uses TMDB API (not endorsed by TMDB) · Player: VidLink adapter
+          <footer className="mt-10 pb-6 text-center text-[11px] font-semibold text-mauve">
+            Movies by InvokeIL · Local-first · No account · Data stored in your browser ·
+            Uses TMDB API (not endorsed by TMDB) · Auto-fallback player ·{' '}
+            <button
+              onClick={() => useApp.getState().navigate({ name: 'privacy' })}
+              className="text-mint underline-offset-2 hover:underline"
+            >
+              Privacy Center
+            </button>
           </footer>
         </main>
       </div>

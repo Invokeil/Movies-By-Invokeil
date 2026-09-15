@@ -14,8 +14,9 @@ import { MediaRow } from '../media/media-row'
 import { ContinueRow } from '../media/continue-row'
 import { Chip } from '../ui-custom/glass'
 import { useApp } from '@/lib/store'
+import { Compass, Flame } from 'lucide-react'
 
-/* ── Behavior-driven Home ─────────────────────────────────────────────
+/* ── Behavior-driven Home (CinemaOS) ──────────────────────────────────
    Nothing on this page is a fixed default: every personalized row is
    derived from THIS device's watch history / progress / library via the
    local taste profile, hydrated through the edge-cached media service.
@@ -47,7 +48,7 @@ interface RowSlot {
 }
 
 export function HomeView() {
-  const { navigate, libraryVersion } = useApp()
+  const { navigate, libraryVersion, setAiPanel } = useApp()
   const [featured, setFeatured] = useState<UnifiedMedia[]>([])
   const [trending, setTrending] = useState<UnifiedMedia[]>([])
   const [popMovies, setPopMovies] = useState<UnifiedMedia[]>([])
@@ -210,7 +211,7 @@ export function HomeView() {
   }
 
   return (
-    <div className="flex flex-col gap-8 pb-6">
+    <div className="flex flex-col gap-8 pb-6 md:gap-10">
       <Hero items={featured} loading={loading} />
 
       <ContinueRow />
@@ -255,24 +256,48 @@ export function HomeView() {
         subtitle="What everyone is watching this week"
         items={trending}
         loading={loading}
+        href="/movies"
       />
-      <MediaRow title="Popular Movies" items={popMovies} loading={loading} />
-      <MediaRow title="Popular TV Series" items={popTV} loading={loading} />
+      <MediaRow title="Popular Movies" items={popMovies} loading={loading} href="/movies" />
+      <MediaRow title="Popular TV Series" items={popTV} loading={loading} href="/tv" />
 
-      <section>
-        <h2 className="mb-3 text-xl font-bold tracking-tight text-ink">Browse by Genre</h2>
-        <div className="flex flex-wrap gap-2">
-          {ALL_GENRES.slice(0, 14).map((g) => (
-            <Chip key={g} onClick={() => navigate({ name: 'browse', kind: 'movie' })}>
-              {g}
-            </Chip>
-          ))}
+      {/* Discovery band: AI + genres */}
+      <section className="glass relative overflow-hidden rounded-3xl p-6 md:p-8">
+        <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full opacity-20 blur-3xl" style={{ background: 'var(--rose)' }} aria-hidden />
+        <div className="flex flex-col items-start justify-between gap-5 md:flex-row md:items-center">
+          <div className="max-w-md">
+            <h2 className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-ink md:text-2xl">
+              <Flame size={20} className="text-rose" /> Describe a mood, get a movie
+            </h2>
+            <p className="mt-1.5 text-sm leading-relaxed text-mauve">
+              AI Discovery understands phrases like &ldquo;mind-bending heist from the 2010s&rdquo; or
+              &ldquo;cozy animated film for kids&rdquo; — and answers with real titles from the catalog.
+            </p>
+          </div>
+          <button
+            onClick={() => setAiPanel(true)}
+            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-gradient-rose px-6 py-3 text-sm font-extrabold text-white shadow-xl transition-transform hover:scale-[1.03] active:scale-95"
+            style={{ boxShadow: '0 10px 40px var(--glow)' }}
+          >
+            <Compass size={17} /> Try AI Discovery
+          </button>
+        </div>
+
+        <div className="mt-6 border-t border-white/8 pt-5">
+          <h3 className="mb-3 text-xs font-extrabold uppercase tracking-[0.2em] text-mauve">Browse by genre</h3>
+          <div className="flex flex-wrap gap-2">
+            {ALL_GENRES.slice(0, 14).map((g) => (
+              <Chip key={g} onClick={() => navigate({ name: 'browse', kind: 'movie', genre: g })}>
+                {g}
+              </Chip>
+            ))}
+          </div>
         </div>
       </section>
 
-      <MediaRow title="Anime Spotlight" items={anime} loading={loading} />
-      <MediaRow title="New Releases" items={newest} loading={loading} />
-      <MediaRow title="Top Rated of All Time" items={top} loading={loading} />
+      <MediaRow title="Anime Spotlight" items={anime} loading={loading} href="/anime" />
+      <MediaRow title="New Releases" items={newest} loading={loading} href="/movies" />
+      <MediaRow title="Top Rated of All Time" items={top} loading={loading} href="/movies" />
     </div>
   )
 }

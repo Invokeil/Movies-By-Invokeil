@@ -99,10 +99,11 @@ export interface TasteProfile {
 export type View =
   | { name: 'home' }
   | { name: 'search'; q?: string }
-  | { name: 'browse'; kind: MediaType }
+  | { name: 'browse'; kind: MediaType; genre?: string }
   | { name: 'detail'; id: string }
   | { name: 'watch'; id: string; season?: number; episode?: number }
   | { name: 'library'; tab?: 'watchlist' | 'favorites' | 'history' | 'continue' }
+  | { name: 'privacy' }
   | { name: 'settings' }
 
 /* AI router response */

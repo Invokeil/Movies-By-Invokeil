@@ -43,7 +43,7 @@ export function ContinueRow({ compact = false }: { compact?: boolean }) {
         <SectionTitle title="Continue Watching" />
         <div className="no-scrollbar flex gap-4 overflow-hidden">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="skeleton-shimmer h-44 w-64 shrink-0 rounded-2xl" />
+            <div key={i} className="skeleton-shimmer h-40 w-64 shrink-0 rounded-2xl" />
           ))}
         </div>
       </section>
@@ -58,23 +58,23 @@ export function ContinueRow({ compact = false }: { compact?: boolean }) {
         title="Continue Watching"
         subtitle="Saved on this device — no account, no sync, no tracking"
       />
-      <div className="row-scroll no-scrollbar -mx-1 flex gap-4 overflow-x-auto px-1 pb-2 pt-1">
+      <div className="row-scroll no-scrollbar -mx-1 grid auto-cols-[16rem] grid-flow-col gap-3.5 overflow-x-auto px-1 pb-2 pt-1 md:auto-cols-[18rem]">
         {rows.map(({ p, media }) => {
           const pct = Math.round((p.position / Math.max(p.duration, 1)) * 100)
           const epLabel = p.season && p.episode ? `S${p.season} E${p.episode}` : mediaType(p.mediaType)
           return (
             <div
               key={`${p.mediaId}:${p.season ?? 0}:${p.episode ?? 0}`}
-              className={cn('group glass glass-hover relative shrink-0 overflow-hidden rounded-2xl', compact ? 'w-56' : 'w-64')}
+              className={cn('group glass glass-hover relative shrink-0 overflow-hidden rounded-2xl', compact ? 'w-56' : 'w-full')}
             >
               <div className="relative cursor-pointer" onClick={() => openPlayer(media!, p.season, p.episode)}>
-                <SmartPoster media={media!} variant="backdrop" className="h-32 w-full" />
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-                  <span className="glass-strong rounded-full p-3.5 text-ink shadow-xl">
+                <SmartPoster media={media!} variant="backdrop" className="h-32 w-full md:h-36" />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity group-hover:opacity-100">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-rose text-white shadow-xl">
                     <Play size={20} fill="currentColor" />
                   </span>
                 </div>
-                <span className="glass absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-bold text-ink">
+                <span className="absolute right-2 top-2 rounded-full border border-white/10 bg-black/45 px-2 py-0.5 text-[10px] font-extrabold text-white backdrop-blur-md">
                   {epLabel}
                 </span>
               </div>
@@ -86,7 +86,7 @@ export function ContinueRow({ compact = false }: { compact?: boolean }) {
                 <div className="mt-1.5 flex items-center justify-between text-[11px] font-semibold text-mauve">
                   <span>{pct}% · {fmtTime(p.duration - p.position)} left</span>
                   <button
-                    className="rounded-full p-1 hover:bg-white/60 hover:text-ink"
+                    className="rounded-full p-1 hover:bg-white/10 hover:text-rose"
                     aria-label="Remove from Continue Watching"
                     onClick={async (e) => {
                       e.stopPropagation()

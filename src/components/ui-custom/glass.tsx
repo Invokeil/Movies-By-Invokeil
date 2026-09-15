@@ -3,7 +3,7 @@
 import { cn } from '@/lib/utils'
 import { type ReactNode } from 'react'
 
-/* ── Glass primitives ────────────────────────────────────────────────── */
+/* ── CinemaOS primitives (theme-aware; tokens come from globals.css) ── */
 
 export function GlassPanel({
   children, className, variant = 'base',
@@ -28,7 +28,7 @@ export function GlassPanel({
 }
 
 export function GlassButton({
-  children, onClick, className, variant = 'glass', ariaLabel, disabled,
+  children, onClick, className, variant = 'glass', ariaLabel, disabled, style,
 }: {
   children: ReactNode
   onClick?: (e: React.MouseEvent) => void
@@ -36,6 +36,7 @@ export function GlassButton({
   variant?: 'glass' | 'rose' | 'ghost' | 'mint'
   ariaLabel?: string
   disabled?: boolean
+  style?: React.CSSProperties
 }) {
   return (
     <button
@@ -43,12 +44,13 @@ export function GlassButton({
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={onClick}
+      style={style}
       className={cn(
         'inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none',
         variant === 'glass' && 'glass glass-hover text-ink',
-        variant === 'rose' && 'bg-gradient-rose text-ink shadow-lg shadow-rose/30 hover:brightness-105 active:scale-95',
-        variant === 'mint' && 'bg-gradient-mint text-ink shadow-lg shadow-mint/40 hover:brightness-105 active:scale-95',
-        variant === 'ghost' && 'text-ink-soft hover:text-ink hover:bg-white/40 transition-colors',
+        variant === 'rose' && 'bg-gradient-rose text-white shadow-lg hover:brightness-110 active:scale-95',
+        variant === 'mint' && 'bg-gradient-mint text-black shadow-lg hover:brightness-110 active:scale-95',
+        variant === 'ghost' && 'text-ink-soft hover:text-ink hover:bg-white/5 transition-colors',
         className
       )}
     >
@@ -68,7 +70,8 @@ export function SectionTitle({
   return (
     <div className="mb-4 flex items-end justify-between gap-4">
       <div>
-        <h2 className="flex items-center gap-2 text-xl font-bold tracking-tight text-ink md:text-2xl">
+        <h2 className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-ink md:text-2xl">
+          <span className="hidden h-6 w-1 rounded-full bg-gradient-rose sm:block" aria-hidden />
           {title}
           {onWhy && (
             <button
@@ -85,7 +88,7 @@ export function SectionTitle({
             </button>
           )}
         </h2>
-        {subtitle && <p className="mt-0.5 text-sm text-mauve">{subtitle}</p>}
+        {subtitle && <p className="mt-0.5 pl-0 text-sm text-mauve sm:pl-[13px]">{subtitle}</p>}
       </div>
       {action}
     </div>
@@ -107,8 +110,8 @@ export function Chip({
       className={cn(
         'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-all',
         active
-          ? 'border-transparent bg-gradient-rose text-ink shadow-md shadow-rose/25'
-          : 'border-white/60 bg-white/40 text-ink-soft backdrop-blur-sm hover:bg-white/70 hover:text-ink',
+          ? 'border-transparent bg-gradient-rose text-white shadow-md'
+          : 'border-white/10 bg-white/5 text-ink-soft hover:bg-white/10 hover:text-ink',
         !onClick && 'pointer-events-none',
         className
       )}
@@ -122,11 +125,11 @@ export function RatingBadge({ rating, className }: { rating: number; className?:
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-xs font-bold text-ink backdrop-blur-sm',
+        'inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/45 px-2 py-0.5 text-[11px] font-extrabold text-white backdrop-blur-md',
         className
       )}
     >
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="#F4ACB7" stroke="#9D8189" strokeWidth="1.4">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="var(--rose)" stroke="none">
         <path d="M12 2l2.9 6.26L21.5 9.3l-4.75 4.4 1.15 6.8L12 17.2l-5.9 3.3 1.15-6.8L2.5 9.3l6.6-1.04L12 2z" />
       </svg>
       {/* audit rule: missing ratings show "NR" — never a fake 0.0 */}
@@ -145,7 +148,7 @@ export function EmptyState({
 }) {
   return (
     <GlassPanel variant="subtle" className="flex flex-col items-center gap-3 px-6 py-14 text-center">
-      <div className="glass rounded-full p-4 text-mauve">{icon}</div>
+      <div className="glass rounded-full p-4 text-rose">{icon}</div>
       <h3 className="text-lg font-bold text-ink">{title}</h3>
       <p className="max-w-sm text-sm text-mauve">{body}</p>
       {action}

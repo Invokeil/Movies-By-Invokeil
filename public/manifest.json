@@ -1,12 +1,12 @@
 {
-  "name": "Movies by invokeil",
-  "short_name": "invokeil",
-  "description": "No-login, privacy-first, local-first movie discovery + streaming interface. Glassmorphism UI.",
+  "name": "Movies by InvokeIL",
+  "short_name": "InvokeIL",
+  "description": "No-login, privacy-first, local-first movie discovery + streaming interface. CinemaOS UI with 8 themes, TV mode and a built-in Ad Shield.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#D8E2DC",
-  "theme_color": "#F4ACB7",
-  "orientation": "portrait-primary",
+  "background_color": "#0b0b10",
+  "theme_color": "#0b0b10",
+  "orientation": "any",
   "icons": [
     {
       "src": "/icon.svg",

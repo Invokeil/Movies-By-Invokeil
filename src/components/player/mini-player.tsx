@@ -63,7 +63,7 @@ export function MiniPlayer() {
       aria-label="Mini player"
     >
       <div className="glass-strong flex items-center gap-3 rounded-2xl p-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-rose text-ink">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-rose text-white">
           <Film size={18} />
         </span>
         <button className="min-w-0 flex-1 text-left" onClick={expand}>
@@ -76,10 +76,10 @@ export function MiniPlayer() {
           </div>
         </button>
         <div className="flex items-center gap-1">
-          <button onClick={expand} className="rounded-full p-2 text-ink hover:bg-white/50" aria-label="Expand player">
+          <button onClick={expand} className="rounded-full p-2 text-ink hover:bg-white/10" aria-label="Expand player">
             <Maximize2 size={16} />
           </button>
-          <button onClick={closeAndSave} className="rounded-full p-2 text-ink hover:bg-white/50" aria-label="Close and save progress">
+          <button onClick={closeAndSave} className="rounded-full p-2 text-ink hover:bg-white/10" aria-label="Close and save progress">
             <X size={16} />
           </button>
         </div>
