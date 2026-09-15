@@ -26,6 +26,9 @@
 
 import { handleMedia, nlCandidates } from './media-gateway'
 import { handleSEO } from './seo'
+import { DuoRoom } from './duo'
+
+export { DuoRoom } // Durable Object entrypoint (wrangler scans exports)
 
 /* Minimal R2 surface used by the image proxy (avoids workers-types dep) */
 interface R2ObjectLite {
@@ -50,6 +53,10 @@ export interface Env {
   IMAGES?: R2BucketLite // image store (R2 bucket invokeil-images)
   AI?: { run(model: string, input: Record<string, unknown>): Promise<unknown> } // Workers AI binding
   ASSETS?: { fetch: (req: Request) => Promise<Response> } // static assets binding (wrangler "assets")
+  DUO?: {
+    idFromName(name: string): { toString(): string }
+    get(id: { toString(): string }): { fetch(req: Request): Promise<Response> }
+  } // Duo Watch Party rooms (Durable Object binding)
 }
 
 const AI_TIMEOUT_MS = 8_000
@@ -627,12 +634,12 @@ async function ai(req: Request, env: Env): Promise<Response> {
 /* ── SPA route hygiene (soft-404 guard + robots directives) ───────── */
 
 /* Routes the SPA owns — served as the app shell instead of a junk 404. */
-const SPA_PREFIXES = ['/watch', '/library', '/search', '/settings', '/ai', '/privacy', '/movies', '/tv', '/anime', '/movie', '/genre']
+const SPA_PREFIXES = ['/watch', '/library', '/search', '/settings', '/ai', '/privacy', '/movies', '/tv', '/anime', '/movie', '/genre', '/duo']
 /* Utility/private routes that must stay out of the index (X-Robots-Tag on
    the raw shell). Indexable hubs (/movies · /tv · /anime) and SEO-rendered
    pages (/movie/{id} · /tv/{id} · /genre/{slug} · /) never reach here.    */
 const UTILITY_EXACT = ['/search', '/settings', '/ai', '/privacy']
-const UTILITY_SUBPATHS = ['/watch', '/library', '/movie/', '/tv/', '/genre/', '/movies/', '/anime/']
+const UTILITY_SUBPATHS = ['/watch', '/library', '/movie/', '/tv/', '/genre/', '/movies/', '/anime/', '/duo/']
 
 function isKnownSpaPath(p: string): boolean {
   if (p === '/') return true
@@ -676,6 +683,19 @@ export default {
       if (pathname === '/api/img') {
         if (req.method !== 'GET') return json(env, { ok: false, error: 'GET only' }, 405)
         return await imgProxy(env, search)
+      }
+
+      /* Duo Watch Party — WebSocket relay into the room's Durable Object.
+         The DO is a blind signaling/presence relay: chat, voice and video
+         travel P2P (WebRTC DTLS-SRTP) and never touch this server.      */
+      if (pathname === '/api/duo/ws') {
+        if (!env.DUO) return json(env, { ok: false, error: 'Duo not configured' }, 501)
+        const room = url.searchParams.get('room') ?? ''
+        if (!/^[a-zA-Z0-9_-]{8,64}$/.test(room)) {
+          return json(env, { ok: false, error: 'bad room' }, 400)
+        }
+        const stub = env.DUO.get(env.DUO.idFromName(room))
+        return stub.fetch(new Request(req, { url: req.url }))
       }
 
       if (pathname === '/api/media') {

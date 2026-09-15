@@ -13,6 +13,8 @@ import { WatchView } from '@/components/player/watch-view'
 import { LibraryView } from '@/components/library/library-view'
 import { PrivacyView } from '@/components/privacy/privacy-view'
 import { SettingsView } from '@/components/settings/settings-view'
+import { DuoJoinView } from '@/components/duo/duo-join'
+import { DuoFollower } from '@/components/duo/duo-overlay'
 import { MiniPlayer } from '@/components/player/mini-player'
 import { AIPanel } from '@/components/ai/ai-panel'
 import { syncShield } from '@/lib/services/shield'
@@ -41,6 +43,8 @@ function CurrentView() {
       return <PrivacyView />
     case 'settings':
       return <SettingsView />
+    case 'duo-join':
+      return <DuoJoinView />
     default:
       return <HomeView />
   }
@@ -161,6 +165,7 @@ export default function Page() {
       </div>
 
       <MiniPlayer />
+      <DuoFollower />
       <BottomNav />
       <AIPanel />
 

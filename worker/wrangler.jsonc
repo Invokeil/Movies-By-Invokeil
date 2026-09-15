@@ -52,4 +52,13 @@
   "r2_buckets": [
     { "binding": "IMAGES", "bucket_name": "invokeil-images" }
   ],
+
+  /* Duo Watch Party — one SQLite-backed Durable Object per couple.
+     Hibernation API keeps idle rooms free; the free plan includes DOs.    */
+  "durable_objects": {
+    "bindings": [ { "name": "DUO", "class_name": "DuoRoom" } ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": [ "DuoRoom" ] }
+  ],
 }

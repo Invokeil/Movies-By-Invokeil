@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { Play, Plus, Check, Heart, ChevronLeft, Clock, Calendar, Globe, Award, Star } from 'lucide-react'
+import { Play, Plus, Check, Heart, ChevronLeft, Clock, Calendar, Globe, Award, Star, Users } from 'lucide-react'
 import type { UnifiedMedia } from '@/lib/types'
 import { useApp } from '@/lib/store'
 import { mediaService, formatRuntime, mediaTypeLabel } from '@/lib/services/media'
+import { duo } from '@/lib/services/duo'
 import { watchlistStore, favoritesStore, progressStore } from '@/lib/db/stores'
 import { SmartPoster, SmartAvatar } from '../media/smart-poster'
 import { GlassPanel, GlassButton, Chip, RatingBadge, EmptyState } from '../ui-custom/glass'
@@ -159,6 +160,20 @@ export function DetailView({ id }: { id: string }) {
           <Play size={17} fill="currentColor" />
           {progress ? `Resume ${progress.season ? `S${progress.season}E${progress.episode} ` : ''}· ${progress.pct}%` : 'Watch Now'}
         </GlassButton>
+        {duo.identityInfo?.paired && (
+          <GlassButton
+            onClick={() => {
+              resume()
+              toast.success('Duo started — your partner will join at your exact moment', { id: 'duo-start' })
+            }}
+            ariaLabel="Watch together with your partner"
+            className="!border-rose/30"
+            style={{ boxShadow: '0 8px 30px -6px var(--glow)' }}
+          >
+            <Users size={16} className="text-rose" />
+            Duo
+          </GlassButton>
+        )}
         <GlassButton onClick={toggleList}>
           {inList ? <Check size={16} className="text-rose" /> : <Plus size={16} />}
           {inList ? 'In Watchlist' : 'Watchlist'}

@@ -40,6 +40,8 @@ export function viewToURL(v: View): string {
       return '/privacy'
     case 'settings':
       return '/settings'
+    case 'duo-join':
+      return '/duo/join'
     default:
       return '/'
   }
@@ -81,6 +83,8 @@ export function urlToView(pathname: string, search: string): View {
       return { name: 'privacy' }
     case 'settings':
       return { name: 'settings' }
+    case 'duo':
+      return seg[1] === 'join' ? { name: 'duo-join' } : { name: 'home' }
     default:
       return { name: 'home' }
   }

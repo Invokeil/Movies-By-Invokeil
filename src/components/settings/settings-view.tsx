@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useSyncExternalStore } from 'react'
 import {
   Palette, Play, Database, Sparkles, Info, Trash2, Download, Upload,
-  GlassWater, Sparkle, BadgeCheck, Tv, ShieldCheck, Monitor,
+  GlassWater, Sparkle, BadgeCheck, Tv, ShieldCheck, Monitor, Users,
+  Link2, Copy, RefreshCw, CheckCircle2, XCircle,
 } from 'lucide-react'
 import { useApp } from '@/lib/store'
 import { idb } from '@/lib/db/idb'
@@ -15,6 +16,7 @@ import { GlassPanel, Chip } from '../ui-custom/glass'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { THEMES } from '@/lib/themes'
+import { duo, saveNick, loadNick } from '@/lib/services/duo'
 import { toast } from 'sonner'
 import { cn, setPageTitle } from '@/lib/utils'
 
@@ -217,6 +219,8 @@ export function SettingsView() {
         </button>
       </Section>
 
+      <PartnerShareSection />
+
       <Section icon={Database} title="Data & Storage" subtitle="Everything lives in IndexedDB — no account, no server">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
@@ -285,4 +289,197 @@ export function SettingsView() {
       </Section>
     </div>
   )
+}
+
+/* ── Partner Share — Duo Watch Party pairing ──────────────────────────
+   Generates a fully private invite link (the secret rides in the URL
+   fragment and never reaches any server). Regenerating requires the
+   partner's permission when they're online — the request travels over
+   the end-to-end encrypted channel.                                     */
+
+function PartnerShareSection() {
+  const d = useSyncExternalStoreDuo()
+  const [showInvite, setShowInvite] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [nick, setNick] = useState(() => (typeof window !== 'undefined' ? loadNick() : ''))
+  const invite = showInvite && duo.identityInfo ? duo.inviteUrl(duo.identityInfo) : null
+
+  /* host: after the partner approves a regeneration, surface the new link */
+  const lastRotated = useRef(0)
+  useEffect(() => {
+    if (d.inviteRotated > lastRotated.current) {
+      lastRotated.current = d.inviteRotated
+      queueMicrotask(() => {
+        setShowInvite(true)
+        toast.success('Link rotated — copy the new private link')
+      })
+    }
+  }, [d.inviteRotated])
+
+  const paired = !!duo.identityInfo?.paired
+
+  const generate = () => {
+    duo.generateInvite(nick.trim() || undefined)
+    setShowInvite(true)
+    toast.success('Private invite link created')
+  }
+
+  const regenerate = () => {
+    if (d.partnerOnline) {
+      duo.requestRegenerate()
+      toast.info('Permission request sent to your partner…')
+    } else {
+      duo.generateInvite(nick.trim() || undefined)
+      setShowInvite(true)
+      toast.success('New private link created (old link no longer works)')
+    }
+  }
+
+  const approve = (ok: boolean) => {
+    duo.answerRegen(ok)
+    if (!ok) toast.info('Denied — the current link stays active')
+  }
+
+  return (
+    <Section
+      icon={Users}
+      title="Partner Share"
+      subtitle="Duo Watch Party — watch together, time-synced, over a private encrypted tunnel"
+    >
+      {/* status row */}
+      <div className="flex flex-wrap items-center gap-2">
+        {paired ? (
+          <span className="flex items-center gap-1.5 rounded-full bg-mint/15 px-3 py-1.5 text-xs font-bold text-mint">
+            <CheckCircle2 size={13} /> Partner linked on this device
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1.5 text-xs font-bold text-mauve">
+            <XCircle size={13} /> No partner linked yet
+          </span>
+        )}
+        {d.wsOnline && (
+          <span className="flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1.5 text-xs font-bold text-mauve">
+            <span className={cn('h-1.5 w-1.5 rounded-full', d.partnerOnline ? 'animate-pulse bg-mint' : 'bg-mauve')} />
+            {d.partnerOnline ? 'Partner online now' : 'Waiting for partner'}
+          </span>
+        )}
+        {d.call === 'live' && (
+          <span className="rounded-full bg-rose/15 px-3 py-1.5 text-xs font-bold text-rose">Tunnel live</span>
+        )}
+      </div>
+
+      {/* nick */}
+      <Row label="Your display name" hint="Shown in the Duo overlay (stays on this device)">
+        <input
+          value={nick}
+          onChange={(e) => {
+            setNick(e.target.value)
+            saveNick(e.target.value)
+          }}
+          placeholder="e.g. Ayan"
+          maxLength={24}
+          className="w-40 rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-semibold text-ink placeholder:text-mauve focus:border-rose/40 focus:outline-none"
+        />
+      </Row>
+
+      {/* actions */}
+      {!paired && !invite && (
+        <button
+          onClick={generate}
+          className="glass glass-hover flex w-fit items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-ink"
+        >
+          <Link2 size={15} className="text-rose" /> Create private invite link
+        </button>
+      )}
+
+      {paired && !d.regenRequest && (
+        <button
+          onClick={regenerate}
+          className="glass glass-hover flex w-fit items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-ink"
+        >
+          <RefreshCw size={14} className="text-rose" /> Regenerate link
+          {d.partnerOnline && <span className="text-xs font-semibold text-mauve">(needs partner permission)</span>}
+        </button>
+      )}
+
+      {/* regen approval (partner side) */}
+      {d.regenRequest && (
+        <div className="rounded-2xl border border-rose/25 bg-rose/5 p-4">
+          <p className="text-sm font-bold text-ink">Your partner wants to regenerate the invite link.</p>
+          <p className="mt-0.5 text-xs text-mauve">Approving makes your current link invalid and creates a new one.</p>
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={() => approve(true)}
+              className="rounded-full bg-gradient-rose px-4 py-2 text-xs font-extrabold text-white hover:brightness-110"
+            >
+              Approve & get new link
+            </button>
+            <button
+              onClick={() => approve(false)}
+              className="glass glass-hover rounded-full px-4 py-2 text-xs font-extrabold text-ink"
+            >
+              Deny
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* the link itself */}
+      {invite && (
+        <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-black/20 p-4 sm:flex-row sm:items-center">
+          <input
+            readOnly
+            value={invite}
+            onFocus={(e) => e.currentTarget.select()}
+            className="min-w-0 flex-1 rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-ink"
+          />
+          <button
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(invite)
+                setCopied(true)
+                toast.success('Link copied — send it only to your partner')
+                setTimeout(() => setCopied(false), 2500)
+              } catch {
+                toast.error('Copy failed — select the text manually')
+              }
+            }}
+            className="flex shrink-0 items-center justify-center gap-2 rounded-full bg-gradient-rose px-4 py-2 text-xs font-extrabold text-white hover:brightness-110"
+          >
+            {copied ? <CheckCircle2 size={14} /> : <Copy size={14} />} {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+      )}
+
+      {/* explainer */}
+      <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-xs leading-relaxed text-mauve">
+        <p className="mb-1.5 font-extrabold text-ink">How the private tunnel works</p>
+        <p>
+          The invite link carries a secret <span className="font-bold text-ink">only in the part after #</span> —
+          browsers never send that part to any server. Your partner&apos;s device uses it to prove membership,
+          then everything (chat, voice, video) flows directly between the two of you with end-to-end encryption.
+          The relay server only sees that two anonymous devices are in the same room — never the secret,
+          never a message, never your call.
+        </p>
+      </div>
+
+      {/* unpair */}
+      {paired && (
+        <button
+          onClick={() => {
+            duo.unpair()
+            setShowInvite(false)
+            toast.info('Partner unlinked from this device')
+          }}
+          className="w-fit text-xs font-bold text-mauve underline-offset-2 hover:text-rose hover:underline"
+        >
+          Unlink partner &amp; wipe pairing from this device
+        </button>
+      )}
+    </Section>
+  )
+}
+
+function useSyncExternalStoreDuo() {
+  return useSyncExternalStore(duo.subscribe, duo.getSnapshot, duo.getSnapshot)
 }

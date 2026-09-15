@@ -1,13 +1,15 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Minimize2, X, Radio, RefreshCw, ShieldAlert, Zap } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, useCallback, useSyncExternalStore } from 'react'
+import { ChevronLeft, ChevronRight, Minimize2, X, Radio, RefreshCw, ShieldAlert, Zap, Users } from 'lucide-react'
 import type { UnifiedMedia } from '@/lib/types'
 import { useApp } from '@/lib/store'
 import { mediaService } from '@/lib/services/media'
 import { player, providers, attachPlayerListener, type PlayerEvent } from '@/lib/services/player'
+import { duo } from '@/lib/services/duo'
 import { progressStore } from '@/lib/db/stores'
 import { GlassPanel, GlassButton, Chip } from '../ui-custom/glass'
+import { DuoOverlay } from '../duo/duo-overlay'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -26,6 +28,8 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const posRef = useRef(0)
   const savedRef = useRef(0)
+  const duoState = useSyncExternalStore(duo.subscribe, duo.getSnapshot, duo.getSnapshot)
+  const [duoJump, setDuoJump] = useState(0) // forces iframe re-align to host
 
   /* load media + saved progress */
   useEffect(() => {
@@ -50,11 +54,29 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
         if (!privateSession) mediaService.logWatch(m, season, episode)
         const saved = await progressStore.get(m.id, season, episode)
         const dur = m.mediaType === 'movie' ? (m.runtime ?? 110) * 60 : (m.episodeRuntime ?? 45) * 60
+        /* Duo guest joining the host's title → start where they are:
+           follow their provider, land at their exact position.         */
+        const duoId = duo.identityInfo
+        const hostSt = duo.getSnapshot().hostState
+        let duoTarget: number | null = null
+        if (duoId && !duoId.isHost && hostSt?.mediaId === m.id) {
+          if (typeof hostSt.providerIdx === 'number' && hostSt.providerIdx !== player.index) {
+            player.setPreferred(hostSt.providerIdx)
+            setAttemptIdx(player.attempt)
+          }
+          duoTarget = duo.hostEstimatedPos() ?? hostSt.pos ?? null
+        }
         setDuration(dur)
-        updatePlayer({ duration: dur, position: saved?.position ?? 0, playing: true })
-        posRef.current = saved?.position ?? 0
-        setPosition(saved?.position ?? 0)
-        if (saved && saved.position > 30) toast.info(`Resumed at ${fmt(saved.position)}`)
+        const startPos = duoTarget ?? saved?.position ?? 0
+        updatePlayer({ duration: dur, position: startPos, playing: true })
+        posRef.current = startPos
+        setPosition(startPos)
+        if (duoTarget != null) {
+          toast.info(`Joined your partner at ${fmt(duoTarget)}`, { id: 'duo-join' })
+          setDuoJump((c) => c + 1) // align the frame with the progress param
+        } else if (saved && saved.position > 30) {
+          toast.info(`Resumed at ${fmt(saved.position)}`)
+        }
       })()
     }, 0)
     return () => { alive = false; clearTimeout(t) }
@@ -109,6 +131,42 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
     return () => clearInterval(sim)
   }, [media, duration, prefs.animations])
 
+  /* ── Duo: publish host state / measure guest drift, 1 Hz ─────────── */
+  useEffect(() => {
+    if (!media) return
+    const duoId = duo.identityInfo
+    if (!duoId) return
+    const beat = setInterval(() => {
+      const playing = playerLive || !player.current.events // event-less providers: assume playing
+      duo.reportPlayback({
+        mediaId: media.id,
+        mediaType: media.mediaType,
+        title: media.title,
+        poster: media.posterPath ?? undefined,
+        season,
+        episode,
+        providerIdx: player.index,
+        pos: posRef.current,
+        playing,
+        dur: duration,
+      })
+      duo.measureDrift(posRef.current)
+    }, 1000)
+    return () => {
+      clearInterval(beat)
+      duo.stopPublishing()
+    }
+  }, [media, duration, season, episode, playerLive])
+
+  /* Duo guest: "Jump to partner" → re-align the frame at the host time */
+  const lastJumpRef = useRef(0)
+  useEffect(() => {
+    if (duoState.jumpTick > lastJumpRef.current) {
+      lastJumpRef.current = duoState.jumpTick
+      queueMicrotask(() => setDuoJump((c) => c + 1))
+    }
+  }, [duoState.jumpTick])
+
   /* persist progress every 10 s (paused entirely during Private Session) */
   useEffect(() => {
     if (!media || useApp.getState().prefs.privateSession) return
@@ -151,7 +209,20 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
     setAttemptIdx(player.attempt)
   }, [])
 
-  const embedUrl = media ? player.attemptUrl(media, season, episode) : ''
+  const embedUrl = useMemo(() => {
+    if (!media) return ''
+    let url = player.attemptUrl(media, season, episode)
+    /* Duo guest → land at the host's exact moment via the provider's
+       start-position parameter (VidLink) when re-aligning.            */
+    if (!duoState.isHost && duoState.hostState?.mediaId === media.id) {
+      const target = duo.hostEstimatedPos()
+      if (target != null) {
+        url = duo.embedUrlWithProgress(url, player.index, target, duration || (media.runtime ?? 110) * 60)
+      }
+    }
+    return url
+    /* duoJump in deps → remount the frame with a fresh start position */
+  }, [media, season, episode, duoJump, duoState.hostState, duoState.isHost, duration])
 
   useEffect(() => {
     if (!media || playerLive || exhausted) return
@@ -249,7 +320,7 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
         <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-[#050507]">
           <iframe
             ref={iframeRef}
-            key={`${id}-${season ?? 0}-${episode ?? 0}-${attemptIdx}`}
+            key={`${id}-${season ?? 0}-${episode ?? 0}-${attemptIdx}-${duoJump}`}
             src={embedUrl}
             className="player-frame"
             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture; autoplay*; encrypted-media*"
@@ -261,7 +332,16 @@ export function WatchView({ id, season, episode }: { id: string; season?: number
                refuses to stream. Top-level production (movies.invokeil.cfd)
                runs unconstrained; embed gets full autoplay/media perms.      */
           />
+          {/* Duo Watch Party cockpit — corner video, chat/voice/video */}
+          <DuoOverlay />
         </div>
+
+        {/* Duo: invite hint on the control bar for paired-but-idle hosts */}
+        {duoState.paired && !duoState.partnerOnline && (
+          <span className="absolute top-3 right-3 z-20 flex items-center gap-1.5 rounded-full border border-white/15 bg-black/70 px-3 py-1.5 text-[11px] font-bold text-white/85 shadow-xl backdrop-blur-md">
+            <Users size={12} className="text-mauve" /> Duo: waiting for your partner…
+          </span>
+        )}
 
         {/* Control bar */}
         <div className="flex flex-wrap items-center gap-2.5 px-2 py-3">

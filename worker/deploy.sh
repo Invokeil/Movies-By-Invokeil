@@ -21,6 +21,9 @@ echo "→ Checking wrangler…"
 WRANGLER="bunx wrangler"
 command -v wrangler >/dev/null 2>&1 && WRANGLER="wrangler"
 
+echo "→ Generating sitemap asset (scripts/gen-sitemap.mjs)…"
+node ../scripts/gen-sitemap.mjs 2>/dev/null || bun ../scripts/gen-sitemap.mjs 2>/dev/null || echo "  (skipped — sitemap stays as-is)"
+
 echo "→ Deploying invokeil-movies-api…"
 $WRANGLER deploy
 

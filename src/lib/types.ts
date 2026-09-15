@@ -105,6 +105,7 @@ export type View =
   | { name: 'library'; tab?: 'watchlist' | 'favorites' | 'history' | 'continue' }
   | { name: 'privacy' }
   | { name: 'settings' }
+  | { name: 'duo-join' } // /duo/join — private partner invite landing
 
 /* AI router response */
 export interface AIResult {
