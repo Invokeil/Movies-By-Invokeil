@@ -581,8 +581,13 @@ async function ai(req: Request, env: Env): Promise<Response> {
 
 /* ── SPA route hygiene (soft-404 guard + robots directives) ───────── */
 
-const SPA_PREFIXES = ['/watch', '/library', '/search', '/settings', '/movies', '/tv', '/anime', '/movie', '/genre']
-const UTILITY_PREFIXES = ['/watch', '/library', '/search', '/settings', '/movies', '/tv', '/anime', '/movie', '/genre']
+/* Routes the SPA owns — served as the app shell instead of a junk 404. */
+const SPA_PREFIXES = ['/watch', '/library', '/search', '/settings', '/ai', '/movies', '/tv', '/anime', '/movie', '/genre']
+/* Utility/private routes that must stay out of the index (X-Robots-Tag on
+   the raw shell). Indexable hubs (/movies · /tv · /anime) and SEO-rendered
+   pages (/movie/{id} · /tv/{id} · /genre/{slug} · /) never reach here.    */
+const UTILITY_EXACT = ['/search', '/settings', '/ai']
+const UTILITY_SUBPATHS = ['/watch', '/library', '/movie/', '/tv/', '/genre/', '/movies/', '/anime/']
 
 function isKnownSpaPath(p: string): boolean {
   if (p === '/') return true
@@ -590,8 +595,8 @@ function isKnownSpaPath(p: string): boolean {
 }
 
 function isUtilityPath(p: string): boolean {
-  if (p === '/') return false
-  return UTILITY_PREFIXES.some((x) => p === x || p.startsWith(`${x}/`))
+  if (UTILITY_EXACT.includes(p)) return true
+  return UTILITY_SUBPATHS.some((x) => p.startsWith(x))
 }
 
 /* ── entrypoint ──────────────────────────────────────────────────────── */
@@ -670,12 +675,12 @@ export default {
           if (nf.ok && (nf.headers.get('content-type') ?? '').includes('text/html')) {
             return new Response(nf.body, {
               status: 404,
-              headers: { 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex, nofollow', 'cache-control': 'public, max-age=600' },
+              headers: { 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex, nofollow', 'cache-control': 'no-store' },
             })
           }
           return new Response('Not found', {
             status: 404,
-            headers: { 'content-type': 'text/plain; charset=utf-8', 'x-robots-tag': 'noindex, nofollow' },
+            headers: { 'content-type': 'text/plain; charset=utf-8', 'x-robots-tag': 'noindex, nofollow', 'cache-control': 'no-store' },
           })
         }
 
@@ -700,12 +705,15 @@ export default {
         }
 
         /* 3 — SPA shell; utility routes (search/library/watch/browse)
-           stay out of the index via X-Robots-Tag */
+           stay out of the index via X-Robots-Tag. HTML always revalidates
+           (max-age=0) so a fresh deploy can never meet a stale cached
+           shell referencing deleted chunk hashes.                        */
         const assetsRes = await env.ASSETS.fetch(req)
         const ct = assetsRes.headers.get('content-type') ?? ''
-        if (ct.includes('text/html') && isUtilityPath(pathname)) {
+        if (ct.includes('text/html')) {
           const h = new Headers(assetsRes.headers)
-          h.set('x-robots-tag', 'noindex, follow')
+          h.set('cache-control', 'public, max-age=0, must-revalidate')
+          if (isUtilityPath(pathname)) h.set('x-robots-tag', 'noindex, follow')
           return new Response(assetsRes.body, { status: assetsRes.status, headers: h })
         }
         return assetsRes

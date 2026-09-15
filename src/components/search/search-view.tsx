@@ -35,6 +35,15 @@ export function SearchView({ initialQuery = '' }: { initialQuery?: string }) {
   useEffect(() => { inputRef.current?.focus() }, [])
   useEffect(() => { searchStore.recent().then(setRecent) }, [])
 
+  /* keep the URL in sync: /search?q=… becomes a shareable, history-friendly
+     deep link (replaceState — no history spam while typing)                */
+  useEffect(() => {
+    const url = query.trim() ? `/search?q=${encodeURIComponent(query.trim())}` : '/search'
+    if (location.pathname + location.search !== url) {
+      history.replaceState({ view: 'search' }, '', url)
+    }
+  }, [query])
+
   const runAiSearch = useCallback(async (q: string) => {
     if (!q.trim()) return
     setAiLoading(true)

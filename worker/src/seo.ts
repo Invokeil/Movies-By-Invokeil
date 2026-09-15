@@ -164,7 +164,45 @@ function titleJsonLd(m: UnifiedMedia, origin: string): object {
       ratingCount: m.voteCount,
     }
   }
+  /* sameAs — authoritative external references (AEO trust signal) */
+  ld.sameAs = [
+    `https://www.themoviedb.org/${isTv ? 'tv' : 'movie'}/${m.tmdbId}`,
+    `https://www.themoviedb.org/${isTv ? 'tv' : 'movie'}/${m.tmdbId}${m.mediaType === 'tv' ? '' : '-' + m.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+  ]
   return ld
+}
+
+/** Breadcrumb trail: Home → Movies/TV Series → Title (Google BreadcrumbList) */
+function breadcrumbJsonLd(m: UnifiedMedia, origin: string): object {
+  const { canonical } = metaParts(m, origin)
+  const isTv = m.mediaType === 'tv'
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: `${origin}/` },
+      { '@type': 'ListItem', position: 2, name: isTv ? 'TV Series' : 'Movies', item: `${origin}/${isTv ? 'tv' : 'movies'}` },
+      { '@type': 'ListItem', position: 3, name: m.title, item: canonical },
+    ],
+  }
+}
+
+/** WebSite + sitelinks SearchAction (home page rich result) */
+function websiteJsonLd(origin: string): object {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE_NAME,
+    url: `${origin}/`,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${origin}/search?q={search_term_string}`,
+      },
+      'query-input': 'required name=search_term_string',
+    },
+  }
 }
 
 function itemListJsonLd(items: UnifiedMedia[], origin: string, listName: string): object {
@@ -259,7 +297,7 @@ function botHead(opts: {
   canonical?: string
   ogType?: string
   ogImage?: string
-  jsonLd?: object
+  jsonLd?: object | object[]
   noindex?: boolean
 }): string {
   return [
@@ -277,7 +315,9 @@ function botHead(opts: {
     `<meta name="twitter:title" content="${attr(opts.title)}">`,
     `<meta name="twitter:description" content="${attr(opts.description)}">`,
     opts.ogImage ? `<meta name="twitter:image" content="${attr(opts.ogImage)}">` : '',
-    opts.jsonLd ? `<script type="application/ld+json">${JSON.stringify(opts.jsonLd)}</script>` : '',
+    ...([] as object[])
+    .concat(opts.jsonLd ?? [])
+    .map((ld) => `<script type="application/ld+json">${JSON.stringify(ld)}</script>`),
   ]
     .filter(Boolean)
     .join('\n')
@@ -334,7 +374,7 @@ function titlePageBot(
       canonical: meta.canonical,
       ogType: m.mediaType === 'tv' ? 'video.tv_show' : 'video.movie',
       ogImage: meta.image,
-      jsonLd: titleJsonLd(m, origin),
+      jsonLd: [titleJsonLd(m, origin), breadcrumbJsonLd(m, origin)],
       noindex: !m.overview.trim() && m.cast.length === 0,
     }),
     `
@@ -426,7 +466,9 @@ function homePageBot(trending: UnifiedMedia[], origin: string): string {
     ogImage: trending.find((x) => x.backdropPath)
       ? `${origin}/api/img?p=${encodeURIComponent(trending.find((x) => x.backdropPath)!.backdropPath!)}&s=w780`
       : undefined,
-    jsonLd: trending.length ? itemListJsonLd(trending.slice(0, 18), origin, 'Trending this week') : undefined,
+    jsonLd: trending.length
+      ? [websiteJsonLd(origin), itemListJsonLd(trending.slice(0, 18), origin, 'Trending this week')]
+      : websiteJsonLd(origin),
   })
   const cards = trending
     .slice(0, 18)
@@ -459,6 +501,52 @@ function homePageBot(trending: UnifiedMedia[], origin: string): string {
   )
 }
 
+/* ── browse hub pages (crawler variant): /movies · /tv · /anime ──────── */
+
+function collectionPageBot(h1: string, listLabel: string, pathKind: string, items: UnifiedMedia[], origin: string): string {
+  const head = botHead({
+    title: `${listLabel} — Stream & Discover | ${SITE_NAME}`,
+    description: `Browse the ${listLabel.toLowerCase()} — ratings, runtimes, cast and legal streaming info on every title. Updated continuously from live popularity data.`,
+    canonical: `${origin}/${pathKind}`,
+    ogImage: items.find((x) => x.backdropPath || x.posterPath)
+      ? `${origin}/api/img?p=${encodeURIComponent((items.find((x) => x.backdropPath || x.posterPath)!.backdropPath || items.find((x) => x.posterPath)!.posterPath)!)}&s=w780`
+      : undefined,
+    jsonLd: items.length ? itemListJsonLd(items, origin, listLabel) : undefined,
+    noindex: items.length === 0,
+  })
+  const cards = items
+    .map(
+      (m) =>
+        `<a class="card" href="/${m.mediaType === 'tv' ? 'tv' : 'movie'}/${m.tmdbId}">${
+          m.posterPath
+            ? `<img src="${attr(`${origin}/api/img?p=${encodeURIComponent(m.posterPath)}&s=w185`)}" alt="${attr(`${m.title} poster`)}" loading="lazy">`
+            : '<img alt="">'
+        }<b>${esc(m.title)}</b><span>${m.year || 'Unknown'} · ★ ${m.voteAverage > 0 ? m.voteAverage.toFixed(1) : 'Unknown'}</span></a>`,
+    )
+    .join('')
+  const otherHubs = [
+    ['movies', 'Movies'],
+    ['tv', 'TV Series'],
+    ['anime', 'Anime'],
+  ]
+    .filter(([k]) => k !== pathKind)
+    .map(([k, l]) => `<a href="/${k}">${l}</a>`)
+    .join(' · ')
+  return chrome(
+    origin,
+    head,
+    `
+  <div class="glass">
+    <h1>${esc(h1)}</h1>
+    <p class="answer">The most popular titles right now, ranked by live popularity and audience
+    rating data. Every title page includes the full cast, story summary and verified legal
+    streaming availability for your region. This list updates continuously.</p>
+    <p>Browse more: ${otherHubs}</p>
+  </div>
+  <div class="glass"><div class="grid">${cards || '<p class="answer">No titles found right now.</p>'}</div></div>`,
+  )
+}
+
 /* ── 404 (crawler variant) ───────────────────────────────────────────── */
 
 function notFoundPageBot(origin: string): string {
@@ -484,29 +572,41 @@ interface HeadPatch {
   canonical?: string
   ogType?: string
   ogImage?: string
-  jsonLd?: object
+  jsonLd?: object | object[]
   noindex?: boolean
 }
 
 async function shellWithHead(env: Env, req: Request, patch: HeadPatch, cacheTag: string, ttl: number): Promise<Response> {
-  const cacheKey = new Request(`${CACHE_BASE}:ui:${cacheTag}`)
-  try {
-    const hit = await caches.default.match(cacheKey)
-    if (hit) return hit
-  } catch {
-    /* cache unavailable → render fresh */
-  }
-
+  /* The shell is fetched FIRST so the cache key can carry the deployment's
+     own asset revision (index.html etag). Without this, a deploy would leave
+     every POP serving the previous build's HTML — which references chunk
+     hashes the new deployment no longer contains → 404 scripts → React
+     never hydrates → the whole site looks dead after a refresh.          */
   let html = ''
+  let rev = '0'
   try {
     const shellRes = env.ASSETS
       ? await env.ASSETS.fetch(new Request(new URL('/', req.url), { headers: req.headers }))
       : null
     html = shellRes && shellRes.ok ? await shellRes.text() : ''
+    if (shellRes) rev = (shellRes.headers.get('etag') ?? '0').replace(/[^a-zA-Z0-9]/g, '')
   } catch {
     html = ''
   }
   if (!html) return new Response('Service unavailable', { status: 503 })
+
+  const cacheKey = new Request(`${CACHE_BASE}:ui:${cacheTag}:v${rev}`)
+  try {
+    const hit = await caches.default.match(cacheKey)
+    if (hit) {
+      /* edge copy is fine (version-keyed); browser must always revalidate */
+      const h = new Headers(hit.headers)
+      h.set('cache-control', 'public, max-age=0, must-revalidate')
+      return new Response(hit.body, { status: hit.status, headers: h })
+    }
+  } catch {
+    /* cache unavailable → render fresh */
+  }
 
   /* strip tags we are replacing, then inject our block after <head> */
   html = html
@@ -532,14 +632,19 @@ async function shellWithHead(env: Env, req: Request, patch: HeadPatch, cacheTag:
     `<meta name="twitter:title" content="${attr(patch.title)}">`,
     `<meta name="twitter:description" content="${attr(patch.description)}">`,
     patch.ogImage ? `<meta name="twitter:image" content="${attr(patch.ogImage)}">` : '',
-    patch.jsonLd ? `<script type="application/ld+json">${JSON.stringify(patch.jsonLd)}</script>` : '',
+    ...([] as object[])
+      .concat(patch.jsonLd ?? [])
+      .map((ld) => `<script type="application/ld+json">${JSON.stringify(ld)}</script>`),
   ]
     .filter(Boolean)
     .join('\n')
 
   html = html.replace(/<head[^>]*>/i, (m) => `${m}\n${block}`)
 
-  const res = new Response(html, {
+  /* Edge copy keeps a real TTL (version-keyed → self-invalidating on deploy);
+     the browser copy always revalidates so a fresh deploy can never leave a
+     user with HTML that references deleted chunk hashes.                  */
+  const edgeRes = new Response(html, {
     status: 200,
     headers: {
       'content-type': 'text/html; charset=utf-8',
@@ -549,11 +654,13 @@ async function shellWithHead(env: Env, req: Request, patch: HeadPatch, cacheTag:
     },
   })
   try {
-    await caches.default.put(cacheKey, res.clone())
+    await caches.default.put(cacheKey, edgeRes.clone())
   } catch {
     /* best-effort */
   }
-  return res
+  const browserHeaders = new Headers(edgeRes.headers)
+  browserHeaders.set('cache-control', 'public, max-age=0, must-revalidate')
+  return new Response(edgeRes.body, { status: 200, headers: browserHeaders })
 }
 
 /* ── sitemap ─────────────────────────────────────────────────────────── */
@@ -571,6 +678,9 @@ async function sitemap(env: Env, origin: string): Promise<Response> {
   const urls = new Map<string, string>() // path → lastmod
 
   urls.set('/', today)
+  urls.set('/movies', today)
+  urls.set('/tv', today)
+  urls.set('/anime', today)
   for (const slug of Object.keys(GENRE_SLUGS)) urls.set(`/genre/${slug}`, today)
 
   const lists = await Promise.all([
@@ -658,14 +768,6 @@ export async function handleSEO(req: Request, env: Env): Promise<Response | null
   if (titleM) {
     const type = titleM[1] as 'movie' | 'tv'
     const num = titleM[2]
-    const cacheTag = `page:${type}:${num}:${bot ? 'bot' : `ui-${region}`}`
-    const cacheKey = new Request(`${CACHE_BASE}:${cacheTag}`)
-    try {
-      const hit = await caches.default.match(cacheKey)
-      if (hit) return hit
-    } catch {
-      /* render fresh */
-    }
 
     const m = await getDetail(env, type, num)
     if (!m || !m.title) {
@@ -701,6 +803,7 @@ export async function handleSEO(req: Request, env: Env): Promise<Response | null
         },
       })
       try {
+        const cacheKey = new Request(`${CACHE_BASE}:page:${type}:${num}:bot`)
         await caches.default.put(cacheKey, res.clone())
       } catch {
         /* best-effort */
@@ -708,9 +811,9 @@ export async function handleSEO(req: Request, env: Env): Promise<Response | null
       return res
     }
 
-    /* human: SPA shell + per-URL head patch (zero hydration risk) */
+    /* human: SPA shell + per-URL head patch (Movie + Breadcrumb JSON-LD) */
     const { title, description, canonical, image } = metaParts(m, origin)
-    const res = await shellWithHead(
+    return shellWithHead(
       env,
       req,
       {
@@ -719,19 +822,12 @@ export async function handleSEO(req: Request, env: Env): Promise<Response | null
         canonical,
         ogType: type === 'tv' ? 'video.tv_show' : 'video.movie',
         ogImage: image,
-        jsonLd: titleJsonLd(m, origin),
+        jsonLd: [titleJsonLd(m, origin), breadcrumbJsonLd(m, origin)],
         noindex: thin,
       },
-      cacheTag,
+      `page:${type}:${num}:ui`,
       SHELL_TTL,
     )
-    if (thin) res.headers.set('x-robots-tag', 'noindex, nofollow')
-    try {
-      await caches.default.put(cacheKey, res.clone())
-    } catch {
-      /* best-effort */
-    }
-    return res
   }
 
   /* 3 — invalid title-shaped URLs → real 404 (soft-404 guard) */
@@ -759,14 +855,6 @@ export async function handleSEO(req: Request, env: Env): Promise<Response | null
     const slug = genreM[1]
     const label = GENRE_SLUGS[slug]
     if (!label) return null // unknown genre → SPA fallback (404 hygiene at worker level)
-    const cacheTag = `genre:${slug}:${bot ? 'bot' : 'ui'}`
-    const cacheKey = new Request(`${CACHE_BASE}:${cacheTag}`)
-    try {
-      const hit = await caches.default.match(cacheKey)
-      if (hit) return hit
-    } catch {
-      /* render fresh */
-    }
     const items = (await getList(env, `list=genre&genre=${encodeURIComponent(label)}`)).slice(0, 24)
     if (bot) {
       const html = genrePageBot(slug, label, items, origin)
@@ -780,13 +868,14 @@ export async function handleSEO(req: Request, env: Env): Promise<Response | null
         },
       })
       try {
+        const cacheKey = new Request(`${CACHE_BASE}:genre:${slug}:bot`)
         await caches.default.put(cacheKey, res.clone())
       } catch {
         /* best-effort */
       }
       return res
     }
-    const res = await shellWithHead(
+    return shellWithHead(
       env,
       req,
       {
@@ -799,27 +888,13 @@ export async function handleSEO(req: Request, env: Env): Promise<Response | null
         jsonLd: items.length ? itemListJsonLd(items, origin, `Best ${label} movies & series`) : undefined,
         noindex: items.length === 0,
       },
-      cacheTag,
+      `genre:${slug}:ui`,
       SHELL_TTL,
     )
-    try {
-      await caches.default.put(cacheKey, res.clone())
-    } catch {
-      /* best-effort */
-    }
-    return res
   }
 
   /* 5 — homepage: bots get a static discover page; browsers get head patch */
   if (path === '/') {
-    const cacheTag = `home:${bot ? 'bot' : 'ui'}`
-    const cacheKey = new Request(`${CACHE_BASE}:${cacheTag}`)
-    try {
-      const hit = await caches.default.match(cacheKey)
-      if (hit) return hit
-    } catch {
-      /* render fresh */
-    }
     const trending = await getList(env, 'list=trending')
     if (bot) {
       const res = new Response(homePageBot(trending, origin), {
@@ -827,18 +902,19 @@ export async function handleSEO(req: Request, env: Env): Promise<Response | null
         headers: {
           'content-type': 'text/html; charset=utf-8',
           'cache-control': `public, max-age=1800`,
+          'x-robots-tag': 'index, follow',
           'x-seo': 'bot-full',
         },
       })
-      res.headers.set('x-robots-tag', 'index, follow')
       try {
+        const cacheKey = new Request(`${CACHE_BASE}:home:bot`)
         await caches.default.put(cacheKey, res.clone())
       } catch {
         /* best-effort */
       }
       return res
     }
-    const res = await shellWithHead(
+    return shellWithHead(
       env,
       req,
       {
@@ -849,16 +925,91 @@ export async function handleSEO(req: Request, env: Env): Promise<Response | null
         ogImage: trending.find((x) => x.backdropPath)
           ? `${origin}/api/img?p=${encodeURIComponent(trending.find((x) => x.backdropPath)!.backdropPath!)}&s=w780`
           : undefined,
+        jsonLd: websiteJsonLd(origin),
       },
-      cacheTag,
+      'home:ui',
       1800,
     )
-    try {
-      await caches.default.put(cacheKey, res.clone())
-    } catch {
-      /* best-effort */
+  }
+
+  /* 6 — browse hubs: /movies · /tv · /anime (indexable landing pages) */
+  const browseM = /^\/(movies|tv|anime)$/.exec(path)
+  if (browseM) {
+    const kind = browseM[1]
+    const conf =
+      kind === 'movies'
+        ? { list: 'popular-movies', label: 'Popular Movies', h1: 'Popular movies right now', kind: 'movie' as const }
+        : kind === 'tv'
+          ? { list: 'popular-tv', label: 'Popular TV Series', h1: 'Popular TV series right now', kind: 'tv' as const }
+          : { list: 'anime', label: 'Popular Anime', h1: 'Popular anime right now', kind: 'tv' as const }
+    const items = (await getList(env, `list=${conf.list}`)).filter((x) => (conf.kind === 'tv' ? true : x.mediaType === 'movie')).slice(0, 24)
+    if (bot) {
+      const html = collectionPageBot(conf.h1, conf.label, `${kind}`, items, origin)
+      const res = new Response(html, {
+        status: 200,
+        headers: {
+          'content-type': 'text/html; charset=utf-8',
+          'cache-control': `public, max-age=${PAGE_TTL}`,
+          'x-robots-tag': items.length ? 'index, follow' : 'noindex, nofollow',
+          'x-seo': 'bot-full',
+        },
+      })
+      try {
+        const cacheKey = new Request(`${CACHE_BASE}:browse:${kind}:bot`)
+        await caches.default.put(cacheKey, res.clone())
+      } catch {
+        /* best-effort */
+      }
+      return res
     }
-    return res
+    return shellWithHead(
+      env,
+      req,
+      {
+        title: `${conf.label} — Stream & Discover | ${SITE_NAME}`,
+        description: `Browse the ${conf.label.toLowerCase()} — ratings, runtimes, cast and legal streaming info on every title. Updated continuously from live popularity data.`,
+        canonical: `${origin}/${kind}`,
+        ogImage: items.find((x) => x.backdropPath || x.posterPath)
+          ? `${origin}/api/img?p=${encodeURIComponent((items.find((x) => x.backdropPath || x.posterPath)!.backdropPath || items.find((x) => x.posterPath)!.posterPath)!)}&s=w780`
+          : undefined,
+        jsonLd: items.length ? itemListJsonLd(items, origin, conf.label) : undefined,
+        noindex: items.length === 0,
+      },
+      `browse:${kind}:ui`,
+      SHELL_TTL,
+    )
+  }
+
+  /* 7 — search: utility route → noindex, own title (never home metadata) */
+  if (path === '/search') {
+    return shellWithHead(
+      env,
+      req,
+      {
+        title: `Search Movies & TV Shows | ${SITE_NAME}`,
+        description: 'Search thousands of movies, TV series and anime by title, cast, genre or keyword.',
+        canonical: `${origin}/search`,
+        noindex: true,
+      },
+      'search:ui',
+      SHELL_TTL,
+    )
+  }
+
+  /* 8 — AI Discovery: personalized route → noindex, own title */
+  if (path === '/ai') {
+    return shellWithHead(
+      env,
+      req,
+      {
+        title: `AI Discovery — Personalized Picks | ${SITE_NAME}`,
+        description: 'Describe what you are in the mood for and get personalized movie and series picks.',
+        canonical: `${origin}/ai`,
+        noindex: true,
+      },
+      'ai:ui',
+      SHELL_TTL,
+    )
   }
 
   return null // everything else → normal SPA flow

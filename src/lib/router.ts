@@ -123,4 +123,7 @@ export function initRouter() {
   // initial deep-link sync (replace so the entry isn't duplicated)
   const initial = urlToView(location.pathname, location.search)
   useApp.setState({ view: initial })
+  /* /ai deep link = home + AI Discovery panel open (the route's own
+     noindex metadata is injected server-side by the worker)            */
+  if (location.pathname === '/ai') useApp.setState({ aiPanelOpen: true })
 }
