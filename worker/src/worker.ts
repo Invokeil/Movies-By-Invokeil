@@ -733,19 +733,29 @@ export default {
           /* SPA fallback for a file-shaped URL would be a soft-404 (200 HTML
              at a bogus asset path) → convert to a real 404 instead.        */
           const ct = asset.headers.get('content-type') ?? ''
-          if (asset.ok && !ct.includes('text/html')) return asset
+          if (asset.ok && !ct.includes('text/html')) {
+            /* Content-hashed build output can be cached forever: every HTML
+               view revalidates (max-age=0), so a deploy can never make HTML
+               reference a hash the current deployment does not ship.        */
+            if (pathname.startsWith('/_next/static/')) {
+              const h = new Headers(asset.headers)
+              h.set('cache-control', 'public, max-age=31536000, immutable')
+              return new Response(asset.body, { status: asset.status, headers: h })
+            }
+            return asset
+          }
           const nf = await env.ASSETS.fetch(
             new Request(new URL('/404.html', req.url), { headers: req.headers }),
           )
           if (nf.ok && (nf.headers.get('content-type') ?? '').includes('text/html')) {
             return new Response(nf.body, {
               status: 404,
-              headers: { 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex, nofollow', 'cache-control': 'no-store' },
+              headers: { 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex, nofollow', 'cache-control': 'no-store', 'cdn-cache-control': 'no-store' },
             })
           }
           return new Response('Not found', {
             status: 404,
-            headers: { 'content-type': 'text/plain; charset=utf-8', 'x-robots-tag': 'noindex, nofollow', 'cache-control': 'no-store' },
+            headers: { 'content-type': 'text/plain; charset=utf-8', 'x-robots-tag': 'noindex, nofollow', 'cache-control': 'no-store', 'cdn-cache-control': 'no-store' },
           })
         }
 
@@ -760,12 +770,13 @@ export default {
                 'content-type': 'text/html; charset=utf-8',
                 'x-robots-tag': 'noindex, nofollow',
                 'cache-control': 'no-store',
+                'cdn-cache-control': 'no-store',
               },
             })
           }
           return new Response('Not found', {
             status: 404,
-            headers: { 'content-type': 'text/plain; charset=utf-8', 'x-robots-tag': 'noindex, nofollow' },
+            headers: { 'content-type': 'text/plain; charset=utf-8', 'x-robots-tag': 'noindex, nofollow', 'cache-control': 'no-store', 'cdn-cache-control': 'no-store' },
           })
         }
 
@@ -778,6 +789,9 @@ export default {
         if (ct.includes('text/html')) {
           const h = new Headers(assetsRes.headers)
           h.set('cache-control', 'public, max-age=0, must-revalidate')
+          /* zone-level caches must never hold HTML — the worker is the only
+             HTML authority (deploy-safety invariant: fresh HTML ↔ live chunks) */
+          h.set('cdn-cache-control', 'no-store')
           if (isUtilityPath(pathname)) h.set('x-robots-tag', 'noindex, follow')
           /* Search Console verification — token resolved from a Worker secret
              at runtime, so the value is never present in source control.    */

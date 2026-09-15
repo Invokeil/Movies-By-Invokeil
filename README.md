@@ -147,11 +147,21 @@ one tunnel, everything else stays out.
 |---|---|---|
 | **Cloudflare KV** (global) | Search results, title details, lists, OMDb ratings — the **first** viewer pays the upstream round-trip, **everyone after** reads from CF storage | search 24 h · details 7 d · lists 6 h · OMDb 7 d |
 | **Cloudflare R2** (persistent) | Every poster/backdrop/cast image — served from R2 after the first-ever fetch, never re-downloaded | forever |
-| **Cloudflare Cache API** (per-colo edge) | Hot API responses + images | minutes–hours |
+| **Cloudflare Cache API** (per-colo edge) | Hot API responses + images + head-patched HTML shells (keyed by the deployment's own asset revision) | minutes–hours |
 | **IndexedDB** (your browser) | Your own history, library, watch progress, preferences | until you clear it |
 
 Result: the most popular searches and images are served in **milliseconds**
 from Cloudflare's network — no API keys in the browser, no upstream hammering.
+
+**Deploy-safe HTML delivery** (the invariant that keeps refreshes working):
+every HTML response is stamped `CDN-Cache-Control: no-store` + `max-age=0,
+must-revalidate`, so any page refresh always re-enters the Worker — which
+serves only the shell of the *currently deployed* build. Content-hashed
+build files (`/_next/static/*`) are the opposite: `max-age=1 y, immutable`.
+A new deploy therefore swaps HTML + chunk hashes atomically — a stale cached
+page can never reference a deleted chunk, so CSS/JS 404s after refresh are
+structurally impossible. IMDb-style deep links (`/movie/tt1375666`) are
+resolved via TMDB `/find` and 301-redirected to the canonical numeric URL.
 
 ### 🖥️ Works on every screen
 
@@ -304,6 +314,7 @@ keys navigate the 10-foot UI.
 - VidLink embed diagnostics — some environments trigger the graceful fallback panel; the "open in new tab" escape hatch works in all of them.
 - Optional service worker for full offline PWA support (the Ad Shield already ships as a service worker when armed).
 - Duo deep-sync note: automatic position landing uses VidLink's start-position parameter; on other providers the partner lands at the title start and one tap of **Jump to partner** re-aligns — constrained by what third-party embeds expose.
+- ~~Refresh after a deploy could load stale HTML referencing deleted chunk hashes (CSS/JS 404s)~~ — **fixed**: HTML is `CDN-Cache-Control: no-store` + always revalidated; only content-hashed assets are immutable; the zone cache is purged on deploys that change delivery semantics.
 
 ## ⚖️ Attribution & disclaimer
 

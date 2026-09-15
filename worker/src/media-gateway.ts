@@ -506,6 +506,26 @@ function parseMediaId(id: string): { type: 'movie' | 'tv'; num: string } | null 
   return m ? { type: m[1] as 'movie' | 'tv', num: m[2] } : null
 }
 
+/* ── IMDb id resolution: "tt1375666" → TMDB { type, num } ──────────────
+   Shared with the SEO layer so /movie/tt… deep links 301-redirect to the
+   canonical numeric URL instead of 404-ing (refreshes of old shares and
+   OMDb-sourced links stay alive). Result is immutable → KV-cached 7 d.  */
+export async function resolveImdbId(
+  env: Env,
+  imdbId: string,
+): Promise<{ type: 'movie' | 'tv'; num: string } | null> {
+  const upstream = buildUpstream(env, `/find/${encodeURIComponent(imdbId)}`, {
+    external_source: 'imdb_id',
+  })
+  const { data } = await cachedUpstream(env, upstream, TTL_DETAIL)
+  const j = data as { movie_results?: { id: number }[]; tv_results?: { id: number }[] } | null
+  const mv = j?.movie_results?.[0]?.id
+  const tv = j?.tv_results?.[0]?.id
+  if (mv) return { type: 'movie', num: String(mv) }
+  if (tv) return { type: 'tv', num: String(tv) }
+  return null
+}
+
 /* ── action handlers ─────────────────────────────────────────────────── */
 
 function resolveGenre(genre: string): { id: number; tvFirst: boolean } | null {

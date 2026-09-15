@@ -15,7 +15,7 @@
    Routes: /sitemap.xml · /movie/{id} · /tv/{id} · /genre/{slug} · /
    Real 404 (status + noindex) for invalid title ids — no soft-404s.     */
 
-import { handleMedia, fetchWatchProviders, type UnifiedMedia } from './media-gateway'
+import { handleMedia, fetchWatchProviders, resolveImdbId, type UnifiedMedia } from './media-gateway'
 
 interface Env {
   CACHE?: KVNamespace
@@ -679,6 +679,11 @@ async function shellWithHead(env: Env, req: Request, patch: HeadPatch, cacheTag:
   }
   const browserHeaders = new Headers(edgeRes.headers)
   browserHeaders.set('cache-control', 'public, max-age=0, must-revalidate')
+  /* HTML always re-executes this worker at the edge (never served stale by
+     a zone cache rule) — the version-keyed Cache API copy above is the only
+     HTML cache. This is the deploy-safety invariant: fresh HTML always
+     references chunk hashes the current deployment actually ships.       */
+  browserHeaders.set('cdn-cache-control', 'no-store')
   return new Response(edgeRes.body, { status: 200, headers: browserHeaders })
 }
 
@@ -855,7 +860,27 @@ export async function handleSEO(req: Request, env: Env): Promise<Response | null
     )
   }
 
-  /* 3 — invalid title-shaped URLs → real 404 (soft-404 guard) */
+  /* 3 — IMDb-style deep links (/movie/tt1375666) → 301 to the canonical
+     numeric URL via TMDB /find. Old shares & OMDb-sourced links survive a
+     refresh; the mapping is immutable so the redirect is cacheable.       */
+  const imdbM = /^\/(movie|tv)\/(tt\d+)$/i.exec(path)
+  if (imdbM) {
+    const resolved = await resolveImdbId(env, imdbM[2])
+    if (resolved) {
+      return new Response(null, {
+        status: 301,
+        headers: {
+          location: `/${resolved.type}/${resolved.num}`,
+          'cache-control': 'public, max-age=86400',
+          'cdn-cache-control': 'max-age=86400',
+          'x-seo': 'imdb-redirect',
+        },
+      })
+    }
+    /* unresolvable tt id → falls through to the real-404 guard below */
+  }
+
+  /* 4 — invalid title-shaped URLs → real 404 (soft-404 guard) */
   const junkTitle = /^\/(movie|tv)\/[^/]+$/.exec(path)
   if (junkTitle) {
     if (bot) {
