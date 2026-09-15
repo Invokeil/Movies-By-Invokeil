@@ -20,6 +20,7 @@ import { handleMedia, fetchWatchProviders, type UnifiedMedia } from './media-gat
 interface Env {
   CACHE?: KVNamespace
   ASSETS?: { fetch: (req: Request) => Promise<Response> }
+  GOOGLE_SITE_VERIFICATION?: string // Search Console token — Worker secret, value never in git
 }
 
 /* ── constants ───────────────────────────────────────────────────────── */
@@ -272,6 +273,7 @@ function chrome(origin: string, head: string, content: string): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+${GV_META}
 ${head}
 <style>${CSS}</style>
 </head>
@@ -576,6 +578,18 @@ interface HeadPatch {
   noindex?: boolean
 }
 
+/* Search Console ownership verification — value resolves from a Worker
+   secret at runtime, so the token never appears in source control.
+   Memoized because the secret is constant for a deployment; initialized
+   once per isolate from handleSEO and shared by every render path.       */
+let GV_META = ''
+function initVerificationMeta(env: Env): void {
+  if (!GV_META) {
+    const gv = (env.GOOGLE_SITE_VERIFICATION ?? '').replace(/["&<>]/g, '')
+    GV_META = gv ? `<meta name="google-site-verification" content="${gv}">` : ''
+  }
+}
+
 async function shellWithHead(env: Env, req: Request, patch: HeadPatch, cacheTag: string, ttl: number): Promise<Response> {
   /* The shell is fetched FIRST so the cache key can carry the deployment's
      own asset revision (index.html etag). Without this, a deploy would leave
@@ -595,7 +609,11 @@ async function shellWithHead(env: Env, req: Request, patch: HeadPatch, cacheTag:
   }
   if (!html) return new Response('Service unavailable', { status: 503 })
 
-  const cacheKey = new Request(`${CACHE_BASE}:ui:${cacheTag}:v${rev}`)
+  /* '-gv' suffix self-invalidates cached shells whenever verification is
+     newly armed (or removed) — otherwise stale shells would miss the tag. */
+  const cacheKey = new Request(
+    `${CACHE_BASE}:ui:${cacheTag}:v${rev}${env.GOOGLE_SITE_VERIFICATION ? '-gv' : ''}`,
+  )
   try {
     const hit = await caches.default.match(cacheKey)
     if (hit) {
@@ -618,6 +636,7 @@ async function shellWithHead(env: Env, req: Request, patch: HeadPatch, cacheTag:
 
   const ogType = patch.ogType ?? 'website'
   const block = [
+    GV_META,
     `<title>${attr(patch.title)}</title>`,
     `<meta name="description" content="${attr(patch.description)}">`,
     patch.noindex ? '<meta name="robots" content="noindex, nofollow">' : '',
@@ -739,6 +758,8 @@ export async function handleSEO(req: Request, env: Env): Promise<Response | null
   const origin = !isLoopback && url.protocol === 'http:' ? url.origin.replace('http:', 'https:') : url.origin
   const bot = isCrawler(req.headers.get('user-agent') ?? '')
   const region = ((req as Request & { cf?: { country?: string } }).cf?.country ?? 'US').toUpperCase()
+
+  initVerificationMeta(env) // arm the Search Console meta before any render path
 
   /* 1 — sitemap (same for bots & browsers) */
   if (path === '/sitemap.xml') return sitemap(env, origin)
@@ -908,7 +929,8 @@ export async function handleSEO(req: Request, env: Env): Promise<Response | null
         },
       })
       try {
-        const cacheKey = new Request(`${CACHE_BASE}:home:bot`)
+        /* ':gv' suffix invalidates pre-verification cached copies */
+        const cacheKey = new Request(`${CACHE_BASE}:home:bot${GV_META ? ':gv' : ''}`)
         await caches.default.put(cacheKey, res.clone())
       } catch {
         /* best-effort */

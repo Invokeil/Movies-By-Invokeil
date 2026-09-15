@@ -44,6 +44,7 @@ export interface Env {
   OMDB_API_KEY?: string
   GEMINI_API_KEY?: string
   GROQ_API_KEY?: string
+  GOOGLE_SITE_VERIFICATION?: string // Search Console meta token — provision via `wrangler secret put`; the VALUE never lives in git
   ALLOWED_ORIGIN?: string // default "*"
   CACHE?: KVNamespace // persistent metadata cache (KV namespace CACHE)
   IMAGES?: R2BucketLite // image store (R2 bucket invokeil-images)
@@ -758,6 +759,24 @@ export default {
           const h = new Headers(assetsRes.headers)
           h.set('cache-control', 'public, max-age=0, must-revalidate')
           if (isUtilityPath(pathname)) h.set('x-robots-tag', 'noindex, follow')
+          /* Search Console verification — token resolved from a Worker secret
+             at runtime, so the value is never present in source control.    */
+          const gv = env.GOOGLE_SITE_VERIFICATION
+          if (gv && assetsRes.status === 200) {
+            try {
+              let html = await assetsRes.text()
+              if (!html.includes('google-site-verification')) {
+                html = html.replace(
+                  /<head[^>]*>/i,
+                  (m) => `${m}\n<meta name="google-site-verification" content="${gv.replace(/["&<>]/g, '')}">`,
+                )
+              }
+              h.set('content-length', new TextEncoder().encode(html).length.toString())
+              return new Response(html, { status: assetsRes.status, headers: h })
+            } catch {
+              /* body read failed → fall through to streaming response */
+            }
+          }
           return new Response(assetsRes.body, { status: assetsRes.status, headers: h })
         }
         return assetsRes

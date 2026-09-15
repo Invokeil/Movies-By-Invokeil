@@ -1,10 +1,14 @@
 # ── Movies by InvokeIL — CI/CD ──────────────────────────────────────────
 # Builds the static SPA and deploys Worker + assets to Cloudflare on every
-# push to main. Requires two repo secrets (Settings → Secrets → Actions):
+# push to main. Requires two repo secrets (Settings → Secrets and variables
+# → Actions → Repository secrets):
 #   CLOUDFLARE_API_TOKEN   — token with "Workers Scripts: Edit" permission
 #   CLOUDFLARE_ACCOUNT_ID  — your Cloudflare account id
-# Worker secrets (TMDB_API_TOKEN, OMDB_API_KEY, GEMINI_API_KEY, GROQ_API_KEY)
-# live in the Worker itself and are NOT touched by this workflow.
+# Until those secrets are added, the pipeline still builds (so you get a
+# compile check on every push) and gracefully SKIPS the deploy step.
+# Worker runtime secrets (TMDB_API_TOKEN, OMDB_API_KEY, GEMINI_API_KEY,
+# GROQ_API_KEY, GOOGLE_SITE_VERIFICATION) live in the Worker itself via
+# `wrangler secret put` and are NOT touched by this workflow.
 
 name: Deploy
 
@@ -23,17 +27,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
+      - uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
-      - name: Build static export
-        run: npx next build
+      - name: Build static export (compile check)
+        run: bun run build
+
+      - name: Guard — deploy only when Cloudflare secrets are configured
+        id: guard
+        env:
+          HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+          HAS_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          if [ "$HAS_TOKEN" = "true" ] && [ "$HAS_ACCOUNT" = "true" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID repo secrets missing — build OK, deploy skipped. Deploy locally with worker/deploy.sh or add the secrets."
+          fi
 
       - name: Deploy Worker + assets
+        if: steps.guard.outputs.skip != 'true'
         run: npx wrangler deploy
         working-directory: worker
         env:
