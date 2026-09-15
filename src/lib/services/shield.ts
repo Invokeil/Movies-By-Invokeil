@@ -128,8 +128,10 @@ export async function syncShield(prefs: AdShieldPrefs): Promise<void> {
         if (nw.state === 'activated') pushRules()
       })
     })
-  } catch {
-    /* SW unavailable (private mode, sandbox) — shield silently inactive */
+  } catch (e) {
+    /* SW unavailable (private mode, sandbox, roll window) — shield stays
+       inactive, but leave a trace so regressions stay diagnosable.       */
+    console.warn('[shield] SW registration failed:', e instanceof Error ? e.message : e)
   }
 }
 

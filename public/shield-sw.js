@@ -16,7 +16,9 @@
      { type: 'SHIELD_BLOCKED', total: n }                                */
 
 /* eslint-disable no-restricted-globals */
-const self = self
+/* NOTE: `self` is the ServiceWorkerGlobalScope — never shadow it with
+   `const self = …` (a redeclaration throws during script evaluation and
+   the worker silently fails to install).                              */
 
 const SAME_ORIGIN_OK = true // same-origin is always allowed through
 
