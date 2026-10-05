@@ -41,7 +41,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f0f0f0",
+  themeColor: "#E6EDF6",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -56,9 +56,9 @@ const THEME_BOOT = `
   try {
     var t = null;
     try { t = localStorage.getItem('il:theme'); } catch (e) {}
-    if (!t || t === 'null') t = 'porcelain';   /* Porcelain is the brand look */
+    if (!t || t === 'null') t = 'glasshouse';   /* Glasshouse is the brand look */
     document.documentElement.setAttribute('data-theme', t);
-    var light = t === 'porcelain' || t === 'arctic-dawn' || t === 'nordic-frost';
+    var light = t === 'glasshouse' || t === 'porcelain' || t === 'arctic-dawn' || t === 'nordic-frost';
     document.documentElement.classList.toggle('dark', !light);
   } catch (e) {}
 })();
@@ -106,13 +106,8 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
         {/* asset self-heal (inline, non-blocking behavior, <1 KB) */}
         <script dangerouslySetInnerHTML={{ __html: ASSET_HEAL }} />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* Display font — gracefully falls back to the system stack if unreachable */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
-          rel="stylesheet"
-        />
+        <link rel="preload" href="/fonts/inter-var-latin.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        {/* Display type — self-hosted Inter variable (weights 100–900, privacy-first) */}
       </head>
       <body className="antialiased">
         {children}

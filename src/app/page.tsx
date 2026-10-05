@@ -145,12 +145,12 @@ export default function Page() {
 
         <NavBar />
 
-        <main className="mx-auto min-w-0 max-w-[1600px] px-3 pb-28 pt-4 md:px-5 md:pb-12 md:pt-5">
+        <main className="mx-auto min-w-0 max-w-[1600px] px-3 pb-28 pt-4 md:px-[calc(28*var(--u))] md:pb-12 md:pt-[calc(20*var(--u))]">
           <PageTransition pageKey={`${view.name}:${'id' in view ? view.id : ''}:${view.name === 'library' ? view.tab : ''}`}>
             <CurrentView />
           </PageTransition>
 
-          <footer className="mt-12 pb-6 text-center text-[11px] font-medium text-mauve">
+          <footer className="mt-12 pb-6 text-center text-[11px] font-[470] tracking-[-0.01em] text-mauve">
             Movies by InvokeIL · Local-first · No account · Data stored in your browser ·
             Uses TMDB API (not endorsed by TMDB) · Auto-fallback player ·{' '}
             <button

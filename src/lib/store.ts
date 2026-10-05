@@ -139,6 +139,6 @@ export function applyPrefsToDOM(p: Preferences) {
   /* CinemaOS v2: theme + TV mode (the inline boot script handles first
      paint from the localStorage mirror written here) */
   root.classList.toggle('tv-mode', !!p.tvMode)
-  try { localStorage.setItem('il:theme', p.theme || 'obsidian') } catch { /* private mode */ }
-  void import('./themes').then(({ setTheme }) => setTheme(p.theme || 'obsidian'))
+  try { localStorage.setItem('il:theme', p.theme || 'glasshouse') } catch { /* private mode */ }
+  void import('./themes').then(({ setTheme }) => setTheme(p.theme || 'glasshouse'))
 }

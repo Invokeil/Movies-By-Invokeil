@@ -14,7 +14,8 @@ export interface ThemeMeta {
 }
 
 export const THEMES: ThemeMeta[] = [
-  { id: 'porcelain',       name: 'Porcelain',       dark: false, swatch: ['#f0f0f0', '#24365e', '#e14d68'], description: 'Bright studio glass — white frost, navy ink, the new signature look' },
+  { id: 'glasshouse',      name: 'Glasshouse',      dark: false, swatch: ['#E6EDF6', '#0F1B31', '#4A78B0'], description: 'Studio-light glasshouse — ink CTAs, weight-200 stats, the signature look' },
+  { id: 'porcelain',       name: 'Porcelain',       dark: false, swatch: ['#f0f0f0', '#24365e', '#e14d68'], description: 'Bright studio glass — white frost, navy ink' },
   { id: 'obsidian',        name: 'Obsidian',        dark: true,  swatch: ['#0b0b10', '#f45b7a', '#ff9e80'], description: 'Near-black cinema hall with a rose glow' },
   { id: 'midnight',        name: 'Midnight',        dark: true,  swatch: ['#0d0916', '#a78bfa', '#f472b6'], description: 'Deep violet night sky, soft and easy on the eyes' },
   { id: 'evergreen',       name: 'Evergreen',       dark: true,  swatch: ['#07120d', '#34d399', '#a3e635'], description: 'Forest dark with fresh emerald accents' },
@@ -25,7 +26,7 @@ export const THEMES: ThemeMeta[] = [
   { id: 'nordic-frost',    name: 'Nordic Frost',    dark: false, swatch: ['#eaf2f1', '#0f9d8f', '#34c3b0'], description: 'Cool teal daylight — clean and focused' },
 ]
 
-export const DEFAULT_THEME = 'porcelain'
+export const DEFAULT_THEME = 'glasshouse'
 
 export function isThemeId(id: string): boolean {
   return THEMES.some((t) => t.id === id)

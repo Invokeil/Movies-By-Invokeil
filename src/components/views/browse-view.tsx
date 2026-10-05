@@ -31,17 +31,14 @@ export function BrowseView({ kind, genre: initialGenre }: { kind: MediaType; gen
   const { view } = useApp()
   const [items, setItems] = useState<UnifiedMedia[]>([])
   const [loading, setLoading] = useState(true)
-  const [genre, setGenre] = useState<string | null>(initialGenre ?? null)
+  /* genre is DERIVED from the store view (source of truth): deep links,
+     back/forward and chip clicks all flow through view.genre, so no
+     effect-synced duplicate state is needed. */
+  const genre = view.name === 'browse' ? view.genre ?? null : null
   const [minRating, setMinRating] = useState(0)
   const [sort, setSort] = useState<'popular' | 'rating' | 'newest'>('popular')
   const [visible, setVisible] = useState(PAGE)
   const sentinel = useRef<HTMLDivElement>(null)
-
-  /* keep state in sync with address bar (back/forward + deep links) */
-  useEffect(() => {
-    const vGenre = view.name === 'browse' ? view.genre ?? null : null
-    setGenre(vGenre)
-  }, [view])
 
   useEffect(() => {
     let alive = true
@@ -54,9 +51,9 @@ export function BrowseView({ kind, genre: initialGenre }: { kind: MediaType; gen
   }, [kind])
 
   /* reflect genre changes into the URL (replaceState — no history spam,
-     no scroll jump). Store view is synced so back/forward stays true. */
+     no scroll jump). Store view is the source of truth, so updating it
+     re-renders the filter — local genre state would only drift. */
   const setGenreAndSync = (g: string | null) => {
-    setGenre(g)
     if (view.name === 'browse') {
       const url = `/${kind === 'movie' ? 'movies' : kind}${g ? `?genre=${encodeURIComponent(g)}` : ''}`
       history.replaceState({ view: 'browse' }, '', url)

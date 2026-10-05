@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import {
-  Play, Plus, Check, ChevronLeft, ChevronRight, Pause, Sparkles,
-  ArrowUpRight, Compass, Star,
+  Play, Plus, Check, ChevronLeft, ChevronRight, Pause, Sparkles, Star,
 } from 'lucide-react'
 import { motion } from 'motion/react'
 import type { UnifiedMedia } from '@/lib/types'
@@ -11,19 +10,20 @@ import { useApp } from '@/lib/store'
 import { SmartPoster } from './smart-poster'
 import { watchlistStore } from '@/lib/db/stores'
 import { formatRuntime, mediaTypeLabel } from '@/lib/services/media'
+import { tmdbImg } from '@/lib/images'
 import { EASE } from '../ui-custom/motion'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
-/* ── Porcelain Hero — RIVR-grade glassmorphism showcase ───────────────
-   A rounded frosted stage: the featured title's artwork fills the
-   panel, white scrims melt it into the #f0f0f0 canvas, and navy ink
-   typography carries the frame. Bottom furniture mirrors the RIVR
-   reference: a glass stat card (left) and a corner-cutout action
-   plate (right). Auto-advances every 9 s, swipeable, keyboard-friendly. */
+/* ── Glasshouse Hero — ConSentinel composition, movie-grade data ──────
+   Full-bleed artwork stage with edge scrims melting into the studio
+   canvas. Weight-360 display title, white play orb + hero tag, ink CTA
+   with knob, weight-200 stats with slash separators, gradient glass
+   panel (Viewer Score + scale track) and a poster-thumb meet pill.
+   Auto-advances every 9 s, swipeable, keyboard-friendly.               */
 
 export function Hero({ items, loading }: { items: UnifiedMedia[]; loading?: boolean }) {
-  const { navigate, openPlayer, setAiPanel, bumpLibrary } = useApp()
+  const { navigate, openPlayer, bumpLibrary } = useApp()
   const [idx, setIdx] = useState(0)
   const [paused, setPaused] = useState(false)
   const [inList, setInList] = useState(false)
@@ -45,7 +45,7 @@ export function Hero({ items, loading }: { items: UnifiedMedia[]; loading?: bool
   }, [current])
 
   if (loading || !current) {
-    return <div className="skeleton-shimmer h-[52vh] min-h-96 w-full rounded-[1.5rem] md:h-[600px] md:rounded-[2.5rem]" aria-hidden />
+    return <div className="skeleton-shimmer h-[64vh] min-h-96 w-full rounded-[2rem] md:h-[76vh] md:rounded-[calc(44*var(--u))]" aria-hidden />
   }
 
   const toggleList = async () => {
@@ -56,6 +56,12 @@ export function Hero({ items, loading }: { items: UnifiedMedia[]; loading?: bool
   }
 
   const nav = (dir: 1 | -1) => setIdx((i) => (i + dir + items.length) % items.length)
+  const score = current.voteAverage > 0 ? Math.min(10, current.voteAverage) : 0
+  const metaBits = [
+    current.year || null,
+    current.runtime ? formatRuntime(current.runtime) : null,
+    current.genres.slice(0, 2).join(' · ') || null,
+  ].filter(Boolean) as string[]
 
   return (
     <section
@@ -72,8 +78,11 @@ export function Hero({ items, loading }: { items: UnifiedMedia[]; loading?: bool
       aria-label="Featured"
       aria-roledescription="carousel"
     >
-      <div className="relative h-[560px] overflow-hidden rounded-[1.5rem] bg-white/10 md:h-[620px] md:rounded-[2.5rem] lg:h-[680px]">
-        {/* artwork — slow ken-burns drift, crossfade on change */}
+      <div
+        className="relative overflow-hidden rounded-[1.6rem] bg-white/10 md:rounded-[calc(44*var(--u))]"
+        style={{ height: 'min(calc(880 * var(--u)), calc(100dvh - 148px))', minHeight: 520 }}
+      >
+        {/* artwork — slow ken-burns push-in, crossfade on change */}
         <div className="absolute inset-0 z-0">
           <motion.div
             key={current.id}
@@ -86,14 +95,14 @@ export function Hero({ items, loading }: { items: UnifiedMedia[]; loading?: bool
           </motion.div>
         </div>
 
-        {/* porcelain scrims — melt artwork into the canvas (theme-aware) */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[rgba(var(--hero-scrim),0.92)] via-[rgba(var(--hero-scrim),0.45)] to-transparent" aria-hidden />
-        <div className="absolute inset-0 bg-gradient-to-t from-[rgba(var(--hero-scrim),0.72)] via-transparent to-transparent" aria-hidden />
+        {/* studio scrims — melt artwork into the canvas (theme-aware) */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[rgba(var(--hero-scrim),0.9)] via-[rgba(var(--hero-scrim),0.35)] to-transparent" aria-hidden />
+        <div className="absolute inset-0 bg-gradient-to-t from-[rgba(var(--hero-scrim),0.85)] via-[rgba(var(--hero-scrim),0.12)] to-transparent" aria-hidden />
         <div className="pointer-events-none absolute inset-0 rounded-[inherit] ring-1 ring-inset ring-white/40" aria-hidden />
 
-        {/* top-right auto-rotate controls (desktop) */}
+        {/* top-right rotation controls + AI orb (desktop) */}
         {items.length > 1 && (
-          <div className="absolute right-4 top-4 z-20 hidden items-center gap-1.5 md:flex">
+          <div className="absolute right-4 top-4 z-20 hidden items-center gap-1.5 md:flex lg:right-[calc(24*var(--u))] lg:top-[calc(24*var(--u))]">
             <HeroIconBtn label="Previous featured" onClick={() => nav(-1)}><ChevronLeft size={16} /></HeroIconBtn>
             <HeroIconBtn label={paused ? 'Resume auto-rotate' : 'Pause auto-rotate'} onClick={() => setPaused((p) => !p)}>
               {paused ? <Play size={13} /> : <Pause size={13} />}
@@ -102,170 +111,176 @@ export function Hero({ items, loading }: { items: UnifiedMedia[]; loading?: bool
           </div>
         )}
 
-        {/* ── content column ── */}
-        <div className="relative z-10 flex h-full flex-col items-start px-6 pt-8 sm:px-10 md:px-14 md:pt-12 lg:justify-center lg:pt-0">
-          {/* badge */}
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: EASE }}
-            className="badge-frost mx-0 flex items-center gap-2 rounded-full px-4 py-2"
-          >
-            <Sparkles className="h-4 w-4 text-[var(--hero-ink)]" aria-hidden />
-            <span className="text-[13px] font-medium text-[var(--hero-ink)]">
-              Featured {mediaTypeLabel(current.mediaType)}
+        {/* ── content composition ── */}
+        <div className="relative z-10 flex h-full flex-col justify-end px-5 pb-16 pt-8 sm:px-9 sm:pb-14 md:px-[calc(56*var(--u))] md:pb-[calc(52*var(--u))] md:pt-[calc(48*var(--u))] lg:flex-row lg:items-end lg:justify-between lg:gap-[calc(46*var(--u))]">
+          {/* left — copy column */}
+          <div className="flex min-w-0 max-w-[min(62vw,780px)] flex-col items-start lg:max-w-[46vw]">
+            {/* eyebrow */}
+            <motion.p
+              key={current.id + '-e'}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, ease: EASE }}
+              className="hero-eyebrow flex items-center gap-2"
+            >
+              <Sparkles size={14} className="shrink-0 text-[var(--hero-ink-soft)]" aria-hidden />
+              Trending {mediaTypeLabel(current.mediaType)}
               {current.imdbRating ? ` · IMDb ${current.imdbRating.toFixed(1)}` : ''}
-            </span>
-          </motion.div>
+            </motion.p>
 
-          {/* title */}
-          <motion.h1
-            key={current.id + '-t'}
-            initial={{ opacity: 0, scale: 0.985 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.15, ease: EASE }}
-            className="display-hero mt-4 max-w-3xl text-4xl sm:text-5xl md:text-6xl lg:text-[72px]"
-          >
-            {current.title}
-          </motion.h1>
+            {/* display title — weight 360, tight, balanced */}
+            <motion.h1
+              key={current.id + '-t'}
+              initial={{ opacity: 0, scale: 0.985 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.15, ease: EASE }}
+              className="display-hero mt-[calc(14*var(--u))] text-[clamp(2.4rem,calc(76*var(--u)),6.4rem)]"
+            >
+              {current.title}
+            </motion.h1>
 
-          {/* meta line */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.7, delay: 0.3 }}
-            className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm font-medium text-[var(--hero-ink-soft)]"
-          >
-            {current.voteAverage > 0 && (
-              <span className="flex items-center gap-1.5 tabular">
-                <Star size={14} className="fill-[#f5c518] text-[#f5c518]" aria-hidden />
-                {current.voteAverage.toFixed(1)}
+            {/* tag row — white play orb + hero tag */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.7, delay: 0.3 }}
+              className="mt-[calc(22*var(--u))] flex flex-wrap items-center gap-x-3 gap-y-2"
+            >
+              <motion.button
+                onClick={() => openPlayer(current, current.mediaType !== 'movie' ? 1 : undefined, 1)}
+                className="play-orb h-[max(calc(46*var(--u)),40px)] w-[max(calc(46*var(--u)),40px)]"
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.94 }}
+                aria-label={`Play ${current.title}`}
+              >
+                <svg viewBox="0 0 13 14" className="h-[38%] w-[38%] translate-x-[6%]" aria-hidden>
+                  <path d="M1.4 1.3 11.6 7 1.4 12.7z" fill="#0b1526" />
+                </svg>
+              </motion.button>
+              <span className="hero-tag">
+                {metaBits.join('  ·  ')}
               </span>
-            )}
-            <span aria-hidden className="opacity-40">|</span>
-            <span className="tabular">{current.year || 'Unknown'}</span>
-            {current.runtime ? (
-              <>
-                <span aria-hidden className="opacity-40">|</span>
-                <span className="tabular">{formatRuntime(current.runtime)}</span>
-              </>
-            ) : null}
-            {current.genres.length > 0 && (
-              <>
-                <span aria-hidden className="hidden opacity-40 sm:inline">|</span>
-                <span className="hidden sm:inline">{current.genres.slice(0, 3).join(' · ')}</span>
-              </>
-            )}
-          </motion.div>
+            </motion.div>
 
-          {/* overview */}
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="mt-3 line-clamp-2 hidden max-w-xl text-[15px] font-normal leading-relaxed text-[var(--hero-ink-soft)] opacity-90 md:block"
-          >
-            {current.overview}
-          </motion.p>
+            {/* CTAs — ink pill with knob + glass pill */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.45, ease: EASE }}
+              className="mt-[calc(26*var(--u))] flex flex-wrap items-center gap-3"
+            >
+              <motion.button
+                onClick={() => openPlayer(current, current.mediaType !== 'movie' ? 1 : undefined, 1)}
+                className="cta-ink flex items-center gap-3 py-1.5 pl-6 pr-1.5"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                <span className="text-[max(calc(15*var(--u)),14px)] font-[470] tracking-[-0.01em]">Watch Now</span>
+                <span className="knob h-[max(calc(38*var(--u)),34px)] w-[max(calc(38*var(--u)),34px)]">
+                  <Play size={14} fill="currentColor" aria-hidden />
+                </span>
+              </motion.button>
+              <motion.button
+                onClick={toggleList}
+                className="glass flex items-center gap-2 rounded-full px-5 py-3 text-sm font-[470] text-ink"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                aria-pressed={inList}
+              >
+                {inList ? <Check size={16} className="text-rose" aria-hidden /> : <Plus size={16} strokeWidth={1.9} aria-hidden />}
+                {inList ? 'In Watchlist' : 'Watchlist'}
+              </motion.button>
+            </motion.div>
 
-          {/* CTAs */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            {/* stats — weight 200 numerals, slash separators (wide screens) */}
+            <motion.div
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.6, ease: EASE }}
+              className="mt-[calc(44*var(--u))] hidden items-end gap-[calc(22*var(--u))] lg:flex"
+            >
+              <div className="stat">
+                <span className="stat-num">950K+</span>
+                <span className="stat-lbl mt-2 block">Movies & Series<br />Discoverable</span>
+              </div>
+              <span className="slash-sep" aria-hidden />
+              <div className="stat">
+                <span className="stat-num">40+</span>
+                <span className="stat-lbl mt-2 block">Genres<br />& Moods</span>
+              </div>
+              <span className="slash-sep" aria-hidden />
+              <div className="stat">
+                <span className="stat-num">0</span>
+                <span className="stat-lbl mt-2 block">Accounts<br />Required</span>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* right — gradient glass panel: Viewer Score */}
+          <motion.aside
+            key={current.id + '-p'}
+            initial={{ opacity: 0, y: 22 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.5, ease: EASE }}
-            className="mt-7 flex flex-wrap items-center gap-3"
+            transition={{ duration: 0.8, delay: 0.35, ease: EASE }}
+            className="glass-panel mt-8 hidden w-[max(calc(275*var(--u)),240px)] flex-none p-[calc(30*var(--u))] md:block lg:mt-0 lg:self-center"
+            aria-label="Viewer score"
           >
-            <motion.button
-              onClick={() => openPlayer(current, current.mediaType !== 'movie' ? 1 : undefined, 1)}
-              className="pill-navy flex items-center rounded-full pl-2 pr-6 py-1.5 md:py-2"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-            >
-              <span className="icon-circle m-1 h-9 w-9">
-                <Play size={16} className="text-white" fill="currentColor" aria-hidden />
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <span className="gp-title block">Viewer Score</span>
+                <span className="gp-sub mt-[calc(8*var(--u))] block">TMDB community rating</span>
+              </div>
+              <span className="flex h-[max(calc(56*var(--u)),44px)] w-[max(calc(56*var(--u)),44px)] flex-none items-center justify-center rounded-full bg-[rgba(var(--surface-tint),0.92)] shadow-[0_0_calc(26*var(--u))_calc(10*var(--u))_rgba(255,255,255,0.5)]" aria-hidden>
+                <Star size={22} className="fill-[#f5c518] text-[#f5c518]" />
               </span>
-              <span className="text-sm font-medium">Watch Now</span>
-            </motion.button>
-            <motion.button
-              onClick={toggleList}
-              className="glass flex items-center gap-2 rounded-full px-5 py-3 text-sm font-medium text-ink"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              aria-pressed={inList}
-            >
-              {inList ? <Check size={16} className="text-rose" aria-hidden /> : <Plus size={16} aria-hidden />}
-              {inList ? 'In Watchlist' : 'Watchlist'}
-            </motion.button>
-          </motion.div>
+            </div>
+            <div className="mt-[calc(26*var(--u))] flex items-end justify-between gap-3">
+              <span className="gp-num">{score > 0 ? score.toFixed(1) : 'NR'}</span>
+              <span className="gp-scale pb-1">/ 10</span>
+            </div>
+            <div className="gp-track mt-[calc(14*var(--u))]" role="img" aria-label={`${score.toFixed(1)} out of 10`}>
+              <i style={{ width: `${Math.max(6, score * 10)}%` }} />
+            </div>
+            <div className="gp-scale mt-[calc(10*var(--u))] flex justify-between">
+              <span>1</span><span>5</span><span>10</span>
+            </div>
+            {current.genres.length > 0 && (
+              <p className="gp-sub mt-[calc(22*var(--u))] border-t border-[rgba(var(--surface-tint),0.4)] pt-[calc(16*var(--u))]">
+                {current.genres.slice(0, 3).join(' · ')}
+              </p>
+            )}
+          </motion.aside>
         </div>
 
-        {/* ── bottom-left glass stat card (RIVR "Active Yielders") ── */}
-        <motion.div
-          initial={{ x: -20, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.25, ease: EASE }}
-          className="absolute bottom-24 left-4 right-auto md:bottom-8 md:left-8 lg:bottom-12 lg:left-12 hidden rounded-[1.4rem] bg-[rgba(var(--hero-scrim),0.42)] p-4 backdrop-blur-xl sm:flex sm:flex-col sm:gap-2.5 sm:min-w-[170px] lg:rounded-[1.8rem] lg:p-5"
-          style={{ border: '1px solid rgba(var(--hero-scrim),0.5)' }}
-        >
-          <div className="flex flex-col">
-            <span className="text-3xl font-medium tracking-tight text-[var(--hero-ink)] tabular">
-              {current.voteAverage > 0 ? current.voteAverage.toFixed(1) : 'NR'}
-            </span>
-            <span className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-[var(--hero-ink-soft)]">
-              Viewer Score
-            </span>
-          </div>
-          <motion.button
-            onClick={() => navigate({ name: 'detail', id: current.id })}
-            className="flex items-center self-start rounded-full bg-[rgba(var(--hero-scrim),0.92)] py-1.5 pl-1.5 pr-4 gap-2 transition-colors"
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            aria-label={`More about ${current.title}`}
-          >
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(var(--hero-scrim),0.25)]">
-              <ArrowUpRight size={13} className="text-[var(--hero-ink)]" aria-hidden />
-            </span>
-            <span className="text-[13px] font-medium text-[var(--hero-ink)]">Details</span>
-          </motion.button>
-        </motion.div>
-
-        {/* ── bottom-right corner-cutout plate (RIVR "Documentation") ── */}
+        {/* ── bottom-right meet pill — poster thumb + knob (desktop) ── */}
         <motion.button
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.4, ease: EASE }}
-          onClick={() => setAiPanel(true)}
-          className="absolute bottom-0 right-0 z-10 hidden items-center gap-3 rounded-tl-[1.5rem] bg-[var(--bg)] p-3 pl-8 pt-5 sm:flex sm:gap-4 sm:p-4 sm:pl-10 sm:pt-6 md:gap-5 md:p-6 md:pl-14 md:pt-8 lg:rounded-tl-[2.6rem]"
+          transition={{ duration: 0.8, delay: 0.5, ease: EASE }}
+          onClick={() => navigate({ name: 'detail', id: current.id })}
+          className="meet-pill absolute bottom-[calc(28*var(--u))] right-[calc(28*var(--u))] z-10 hidden items-center gap-3 py-2 pl-2 pr-2 md:flex lg:pr-3"
           whileHover={{ scale: 1.015 }}
           whileTap={{ scale: 0.98 }}
-          aria-label="Open AI Discovery — find your next mood"
+          aria-label={`Open details for ${current.title}`}
         >
-          {/* corner intersection masks */}
-          <span className="pointer-events-none absolute -top-6 right-0 h-6 w-6 md:-top-9 md:h-9 md:w-9" aria-hidden>
-            <svg width="100%" height="100%" viewBox="0 0 56 56" fill="none">
-              <path d="M56 56V0C56 30.9279 30.9279 56 0 56H56Z" className="cutout-fill" />
-            </svg>
+          <span className="thumb h-[max(calc(56*var(--u)),44px)] w-[max(calc(56*var(--u)),44px)]">
+            {current.posterPath ? (
+              <img src={tmdbImg(current.posterPath, 'w185')} alt="" loading="lazy" decoding="async" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center bg-[rgba(var(--surface-tint),0.5)]">
+                <Play size={16} className="text-[var(--hero-ink)]" aria-hidden />
+              </span>
+            )}
           </span>
-          <span className="pointer-events-none absolute -left-6 bottom-0 h-6 w-6 md:-left-9 md:h-9 md:w-9" aria-hidden>
-            <svg width="100%" height="100%" viewBox="0 0 56 56" fill="none">
-              <path d="M56 56H0C30.9279 56 56 30.9279 56 0V56Z" className="cutout-fill" />
-            </svg>
-          </span>
-          <span className="flex h-11 w-11 items-center justify-center rounded-full border border-[rgba(var(--hero-scrim),0.35)] bg-[rgba(var(--hero-scrim),0.1)] md:h-14 md:w-14">
-            <Compass size={20} className="text-[var(--hero-ink)]" aria-hidden />
-          </span>
-          <span className="flex flex-col items-start">
-            <span className="text-base font-medium text-[var(--hero-ink)] md:text-lg">AI Discovery</span>
-            <span className="flex items-center gap-1 text-[var(--hero-ink-soft)] transition-colors hover:text-[var(--hero-ink)]">
-              <span className="text-xs font-medium md:text-sm">Find your mood</span>
-              <ChevronRight size={14} aria-hidden />
-            </span>
+          <b className="text-[max(calc(15*var(--u)),13px)]">Open Details</b>
+          <span className="knob h-[max(calc(44*var(--u)),36px)] w-[max(calc(44*var(--u)),36px)]">
+            <ChevronRight size={16} aria-hidden />
           </span>
         </motion.button>
 
-        {/* progress dots (desktop) */}
+        {/* progress dots */}
         {items.length > 1 && (
-          <div className="absolute bottom-6 left-1/2 z-10 hidden -translate-x-1/2 gap-1.5 md:flex">
+          <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 gap-1.5 md:bottom-[calc(20*var(--u))]">
             {items.map((it, i) => (
               <button
                 key={it.id}
@@ -273,8 +288,8 @@ export function Hero({ items, loading }: { items: UnifiedMedia[]; loading?: bool
                 aria-label={`Show featured item ${i + 1}`}
                 aria-current={i === idx}
                 className={cn(
-                  'h-1.5 rounded-full transition-all duration-300',
-                  i === idx ? 'w-8 bg-[var(--hero-ink)]' : 'w-2.5 bg-[var(--hero-ink)]/25 hover:bg-[var(--hero-ink)]/50',
+                  'h-1.5 rounded-full bg-[var(--hero-ink)] transition-all duration-300',
+                  i === idx ? 'w-8 opacity-90' : 'w-2.5 opacity-25 hover:opacity-50',
                 )}
               />
             ))}

@@ -87,19 +87,29 @@ Plus **"did you mean"** suggestions from your own recent searches, a visual
 **genre browser**, and results cached on Cloudflare's edge so repeat searches
 feel instant.
 
-### 🎨 Porcelain UI (new!)
+### 🎨 Glasshouse UI (new!)
 
-A complete, brand-new interface built around **light glassmorphism** — a
-bright `#f0f0f0` studio canvas, white frosted-glass panels, deep-navy ink and
-airy display type. Every surface is animated with **Motion for React**
-(`motion/react`): an orchestrated hero reveal (badge → title → meta → CTAs),
-spring-press buttons, hover-lift posters, a sliding pill behind the active nav
-item, and page transitions between views. The hero is a RIVR-style rounded
-stage: the featured title's artwork melts into the canvas through a frosted
-scrim, with a glass **Viewer Score** card and a corner-cutout **AI Discovery**
-plate. `prefers-reduced-motion` (and the in-app Animation toggle) disables all
-of it gracefully. Nine themes ship — **Porcelain** is the new signature; all
-six dark cinema themes and the two classic light themes remain one tap away.
+A complete, brand-new interface built on a **design-unit system** (ConSentinel-grade):
+every hero dimension scales with one reference pixel — `--u = min(100vw/1280, 100dvh/960)`
+— so the composition always fills the frame exactly, on any device shape. Responsive
+tiers are keyed to the **frame's aspect ratio, not device width**: wide screens get the
+full absolute composition; compact windows switch to a flex column; phones run a
+two-scale system (`--u` for composition/display type, a floored `--t` for reading type
+and controls so labels stay legible and touch targets stay ≥44px). The look: a pale
+blue-white studio canvas (`#E6EDF6`), frosted glass capsules (blur 40u), **ink CTA
+pills with circular knobs**, **weight-360 display type**, **weight-200 giant numerals
+with diagonal slash separators**, a gradient glass **Viewer Score** panel with a scale
+track, and a poster-thumb **meet pill**. Typography is **self-hosted Inter variable**
+(weights 100–900, intermediates like 360/425/470/520/570 — no third-party font
+requests). Every surface is animated with **Motion for React** (`motion/react`) and
+`prefers-reduced-motion` (or the in-app Animation toggle) disables all of it
+gracefully. Ten themes ship — **Glasshouse** is the signature; Porcelain and all
+cinema-dark themes remain one tap away (ink CTAs auto-invert on dark themes).
+
+### 🎨 Porcelain UI
+
+The previous signature look, still available in the theme picker: light glassmorphism
+on a `#f0f0f0` canvas with navy pills and airy display type.
 
 ### ▶️ Playback that just works
 
