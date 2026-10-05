@@ -81,3 +81,12 @@ test
 /README-SOURCE.md
 /worklog.md
 /repo-staging/
+.env*.development
+
+# OpenNext
+.open-next
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example

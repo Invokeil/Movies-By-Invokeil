@@ -41,7 +41,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b0b10",
+  themeColor: "#f0f0f0",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -56,11 +56,9 @@ const THEME_BOOT = `
   try {
     var t = null;
     try { t = localStorage.getItem('il:theme'); } catch (e) {}
-    var dark = true;
-    try { dark = !window.matchMedia || window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) {}
-    if (!t) t = dark ? 'obsidian' : 'arctic-dawn';
+    if (!t || t === 'null') t = 'porcelain';   /* Porcelain is the brand look */
     document.documentElement.setAttribute('data-theme', t);
-    var light = t === 'arctic-dawn' || t === 'nordic-frost';
+    var light = t === 'porcelain' || t === 'arctic-dawn' || t === 'nordic-frost';
     document.documentElement.classList.toggle('dark', !light);
   } catch (e) {}
 })();

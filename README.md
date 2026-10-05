@@ -87,6 +87,20 @@ Plus **"did you mean"** suggestions from your own recent searches, a visual
 **genre browser**, and results cached on Cloudflare's edge so repeat searches
 feel instant.
 
+### 🎨 Porcelain UI (new!)
+
+A complete, brand-new interface built around **light glassmorphism** — a
+bright `#f0f0f0` studio canvas, white frosted-glass panels, deep-navy ink and
+airy display type. Every surface is animated with **Motion for React**
+(`motion/react`): an orchestrated hero reveal (badge → title → meta → CTAs),
+spring-press buttons, hover-lift posters, a sliding pill behind the active nav
+item, and page transitions between views. The hero is a RIVR-style rounded
+stage: the featured title's artwork melts into the canvas through a frosted
+scrim, with a glass **Viewer Score** card and a corner-cutout **AI Discovery**
+plate. `prefers-reduced-motion` (and the in-app Animation toggle) disables all
+of it gracefully. Nine themes ship — **Porcelain** is the new signature; all
+six dark cinema themes and the two classic light themes remain one tap away.
+
 ### ▶️ Playback that just works
 
 The player tries multiple embed sources **in order** and falls back

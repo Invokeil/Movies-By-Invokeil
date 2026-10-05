@@ -108,12 +108,12 @@ export function DetailView({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-6 pb-6">
-      {/* Backdrop header */}
-      <div className="anim-fade relative min-h-[380px] overflow-hidden rounded-3xl md:min-h-[460px]">
+      {/* Backdrop header — theme-aware artwork scrim (RIVR style) */}
+      <div className="anim-fade relative min-h-[380px] overflow-hidden rounded-[1.5rem] md:min-h-[460px] md:rounded-[2.2rem]">
         <SmartPoster media={media} variant="backdrop" size="w1280" className="absolute inset-0 h-full w-full" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg)] via-transparent to-black/30" />
-        <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-white/10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[rgba(var(--hero-scrim),0.92)] via-[rgba(var(--hero-scrim),0.45)] to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[rgba(var(--hero-scrim),0.7)] via-transparent to-[rgba(var(--hero-scrim),0.25)]" />
+        <div className="pointer-events-none absolute inset-0 rounded-[inherit] ring-1 ring-inset ring-[rgba(var(--hero-scrim),0.35)]" />
 
         <div className="relative z-10 flex h-full min-h-[380px] items-end gap-5 p-5 md:min-h-[460px] md:items-center md:gap-8 md:p-10">
           <div className="glass-strong hidden w-44 shrink-0 overflow-hidden rounded-2xl shadow-2xl md:block lg:w-52">
@@ -122,11 +122,11 @@ export function DetailView({ id }: { id: string }) {
 
           <div className="flex flex-col gap-3 pb-2 md:pb-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-gradient-rose px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white">
+              <span className="rounded-full bg-[rgba(var(--navy,30,50,90),0.85)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white">
                 {mediaTypeLabel(media.mediaType)}
               </span>
               {media.rated && (
-                <span className="glass-subtle rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.18em] text-ink-soft">
+                <span className="badge-frost rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]">
                   {media.rated}
                 </span>
               )}
@@ -136,19 +136,19 @@ export function DetailView({ id }: { id: string }) {
                 </span>
               )}
             </div>
-            <h1 className="text-3xl font-black leading-[1.05] tracking-tight text-white drop-shadow-lg md:text-5xl">
+            <h1 className="display-hero text-3xl md:text-5xl">
               {media.title}
             </h1>
             {media.tagline && (
-              <p className="hidden text-sm font-semibold italic text-white/60 md:block">&ldquo;{media.tagline}&rdquo;</p>
+              <p className="hidden text-sm font-medium italic text-[var(--hero-ink-soft)] md:block">&ldquo;{media.tagline}&rdquo;</p>
             )}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm font-semibold text-white/85">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm font-medium text-[var(--hero-ink-soft)]">
               <RatingBadge rating={media.voteAverage} />
-              {media.imdbRating && <span className="rounded-full border border-[#f5c518]/40 bg-black/40 px-2.5 py-0.5 text-xs font-extrabold text-[#f5c518] backdrop-blur-md">IMDb {media.imdbRating}</span>}
-              {media.metascore && <span className="glass rounded-full px-2.5 py-0.5 text-xs font-bold text-white">Metascore {media.metascore}</span>}
-              <span className="flex items-center gap-1"><Calendar size={13} className="text-white/50" />{media.year || 'Unknown'}</span>
-              {media.runtime && <span className="flex items-center gap-1"><Clock size={13} className="text-white/50" />{formatRuntime(media.runtime)}</span>}
-              <span className="flex items-center gap-1"><Globe size={13} className="text-white/50" />{media.originalLanguage.toUpperCase()}</span>
+              {media.imdbRating && <span className="rounded-full border border-[#f5c518]/40 bg-[#f5c518]/10 px-2.5 py-0.5 text-xs font-semibold text-[#b8860b] backdrop-blur-md">IMDb {media.imdbRating}</span>}
+              {media.metascore && <span className="badge-frost rounded-full px-2.5 py-0.5 text-xs font-semibold">Metascore {media.metascore}</span>}
+              <span className="flex items-center gap-1"><Calendar size={13} className="opacity-60" />{media.year || 'Unknown'}</span>
+              {media.runtime && <span className="flex items-center gap-1"><Clock size={13} className="opacity-60" />{formatRuntime(media.runtime)}</span>}
+              <span className="flex items-center gap-1"><Globe size={13} className="opacity-60" />{media.originalLanguage.toUpperCase()}</span>
             </div>
           </div>
         </div>
@@ -198,7 +198,7 @@ export function DetailView({ id }: { id: string }) {
               <h3 className="mb-3 mt-6 text-xs font-extrabold uppercase tracking-[0.2em] text-mauve">Top Cast</h3>
               <div className="grid gap-2.5 sm:grid-cols-2">
                 {media.cast.map((c) => (
-                  <div key={c.name} className="flex items-center gap-3 rounded-2xl bg-white/5 p-2.5 transition-colors hover:bg-white/10">
+                  <div key={c.name} className="glass-subtle flex items-center gap-3 rounded-2xl p-2.5 transition-colors">
                     <SmartAvatar name={c.name} profilePath={c.profilePath} />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-bold text-ink">{c.name}</p>
@@ -250,8 +250,8 @@ export function DetailView({ id }: { id: string }) {
                     key={ep}
                     onClick={() => startEpisode(ep)}
                     className={cn(
-                      'group flex items-center gap-4 rounded-2xl p-3 text-left transition-all hover:bg-white/10',
-                      isResume ? 'bg-rose/15' : 'bg-white/5'
+                      'group flex items-center gap-4 rounded-2xl p-3 text-left transition-all',
+                      isResume ? 'bg-[rgba(var(--surface-tint),0.1)] ring-1 ring-rose/40' : 'glass-subtle'
                     )}
                   >
                     <span className="glass flex h-11 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl text-sm font-extrabold text-ink">
@@ -287,7 +287,7 @@ export function DetailView({ id }: { id: string }) {
 
 function InfoRow({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-white/8 pb-2.5 last:border-0">
+    <div className="flex items-center justify-between gap-3 border-b border-[rgba(var(--surface-tint),0.14)] pb-2.5 last:border-0">
       <dt className="flex items-center gap-1.5 font-semibold text-mauve">{icon}{label}</dt>
       <dd className="truncate text-right font-bold text-ink">{value}</dd>
     </div>

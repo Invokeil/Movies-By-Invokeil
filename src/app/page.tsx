@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { useApp } from '@/lib/store'
 import { initRouter } from '@/lib/router'
 import { initSpatialNav, initShortcuts } from '@/lib/spatial'
-import { Sidebar, BottomNav, TopBar, DesktopBar } from '@/components/layout/shell'
+import { NavBar, BottomNav } from '@/components/layout/shell'
 import { HomeView } from '@/components/views/home-view'
 import { SearchView } from '@/components/search/search-view'
 import { BrowseView } from '@/components/views/browse-view'
@@ -17,6 +17,7 @@ import { DuoJoinView } from '@/components/duo/duo-join'
 import { DuoFollower } from '@/components/duo/duo-overlay'
 import { MiniPlayer } from '@/components/player/mini-player'
 import { AIPanel } from '@/components/ai/ai-panel'
+import { PageTransition, MotionConfig } from '@/components/ui-custom/motion'
 import { syncShield } from '@/lib/services/shield'
 
 /* ── Movies by InvokeIL — CinemaOS SPA shell ───────────────────────────
@@ -53,6 +54,7 @@ function CurrentView() {
 export default function Page() {
   const loadPrefs = useApp((s) => s.loadPrefs)
   const prefs = useApp((s) => s.prefs)
+  const view = useApp((s) => s.view)
 
   useEffect(() => { loadPrefs() }, [loadPrefs])
 
@@ -132,43 +134,40 @@ export default function Page() {
   }, [])
 
   return (
-    <div className="relative min-h-screen">
-      {/* ambient background (theme-aware) */}
-      <div className="app-bg" aria-hidden>
-        <div className="blob blob-1" />
-        <div className="blob blob-2" />
-        <div className="blob blob-3" />
-      </div>
+    <MotionConfig reducedMotion={prefs.animations === false ? 'always' : 'user'}>
+      <div className="relative min-h-screen">
+        {/* ambient background (theme-aware) */}
+        <div className="app-bg" aria-hidden>
+          <div className="blob blob-1" />
+          <div className="blob blob-2" />
+          <div className="blob blob-3" />
+        </div>
 
-      <div className="mx-auto flex max-w-[1600px]">
-        <Sidebar />
+        <NavBar />
 
-        <main className="min-w-0 flex-1 px-3 pb-28 md:px-5 md:pb-10 lg:px-8">
-          <TopBar />
-          <DesktopBar />
-
-          <div className="mt-2 md:mt-4">
+        <main className="mx-auto min-w-0 max-w-[1600px] px-3 pb-28 pt-4 md:px-5 md:pb-12 md:pt-5">
+          <PageTransition pageKey={`${view.name}:${'id' in view ? view.id : ''}:${view.name === 'library' ? view.tab : ''}`}>
             <CurrentView />
-          </div>
+          </PageTransition>
 
-          <footer className="mt-10 pb-6 text-center text-[11px] font-semibold text-mauve">
+          <footer className="mt-12 pb-6 text-center text-[11px] font-medium text-mauve">
             Movies by InvokeIL · Local-first · No account · Data stored in your browser ·
             Uses TMDB API (not endorsed by TMDB) · Auto-fallback player ·{' '}
             <button
               onClick={() => useApp.getState().navigate({ name: 'privacy' })}
-              className="text-mint underline-offset-2 hover:underline"
+              className="text-ink underline-offset-2 hover:underline"
             >
               Privacy Center
             </button>
           </footer>
         </main>
+
+        <MiniPlayer />
+        <DuoFollower />
+        <BottomNav />
+        <AIPanel />
+
       </div>
-
-      <MiniPlayer />
-      <DuoFollower />
-      <BottomNav />
-      <AIPanel />
-
-    </div>
+    </MotionConfig>
   )
 }

@@ -50,6 +50,9 @@
 :root, html[data-theme='obsidian'] {
   color-scheme: dark;
   --radius: 1rem;
+  --hero-scrim: 8, 8, 14;          /* artwork overlay tint (dark themes) */
+  --hero-ink: #f4f2f6;
+  --hero-ink-soft: rgba(244, 242, 246, 0.72);
   --bg: #0b0b10;
   --bg-2: #101018;
   --surface-tint: 255, 255, 255;
@@ -272,6 +275,9 @@ html[data-theme='charcoal'] {
 /* ── Theme 7: Arctic Dawn (light) ───────────────────────────────── */
 html[data-theme='arctic-dawn'] {
   color-scheme: light;
+  --hero-scrim: 255, 255, 255;
+  --hero-ink: #16202e;
+  --hero-ink-soft: #3c4a5e;
   --bg: #eef1f6;
   --bg-2: #f7f9fc;
   --surface-tint: 255, 255, 255;
@@ -317,6 +323,9 @@ html[data-theme='arctic-dawn'] {
 /* ── Theme 8: Nordic Frost (light, teal) ────────────────────────── */
 html[data-theme='nordic-frost'] {
   color-scheme: light;
+  --hero-scrim: 255, 255, 255;
+  --hero-ink: #0f2b27;
+  --hero-ink-soft: #33534d;
   --bg: #eaf2f1;
   --bg-2: #f5faf9;
   --surface-tint: 255, 255, 255;
@@ -357,6 +366,59 @@ html[data-theme='nordic-frost'] {
   --mint-deep: #0b6f65;
   --peach: #ffd9b0;
   --blush: #9fe8dd;
+}
+
+/* ── Theme 9: Porcelain (default) — RIVR-grade light glassmorphism ─
+   Canvas #f0f0f0 · white frosted glass · deep-navy ink · airy type.
+   The signature InvokeIL look: a bright design-studio surface where
+   poster art supplies the color and glass supplies the depth.        */
+html[data-theme='porcelain'] {
+  color-scheme: light;
+  --radius: 1.5rem;
+  --hero-scrim: 255, 255, 255;
+  --hero-ink: #1e325a;
+  --hero-ink-soft: #5e6470;
+  --bg: #f0f0f0;
+  --bg-2: #f7f7f8;
+  --surface-tint: 255, 255, 255;
+  --glass-alpha: 0.55;
+  --glass-border: rgba(255, 255, 255, 0.72);
+  --glass-border-strong: rgba(255, 255, 255, 0.92);
+  --ink: #1e325a;            /* RIVR navy ink */
+  --ink-soft: #46536e;
+  --mauve: #5e6470;          /* RIVR secondary */
+  --rose: #e14d68;           /* InvokeIL brand accent survives the redesign */
+  --accent-2: #f97362;
+  --glow: rgba(30, 50, 90, 0.14);
+  --ring: #e14d68;
+  --background: #f0f0f0;
+  --foreground: #1e325a;
+  --card: rgba(255, 255, 255, 0.62);
+  --card-foreground: #1e325a;
+  --popover: rgba(255, 255, 255, 0.97);
+  --popover-foreground: #1e325a;
+  --primary: #24365e;        /* navy pill buttons (RIVR "Book Demo") */
+  --primary-foreground: #ffffff;
+  --secondary: rgba(30, 50, 90, 0.06);
+  --secondary-foreground: #46536e;
+  --muted: rgba(30, 50, 90, 0.05);
+  --muted-foreground: #5e6470;
+  --accent: rgba(225, 77, 104, 0.1);
+  --accent-foreground: #b03248;
+  --destructive: #dc2626;
+  --border: rgba(30, 50, 90, 0.1);
+  --input: rgba(255, 255, 255, 0.85);
+  --sidebar: rgba(255, 255, 255, 0.55);
+  --sidebar-foreground: #1e325a;
+  --sidebar-primary: #24365e;
+  --sidebar-accent: rgba(225, 77, 104, 0.08);
+  --sidebar-border: rgba(255, 255, 255, 0.7);
+  --sidebar-ring: #e14d68;
+  --mint: #0f9d8f;
+  --mint-deep: #0b6f65;
+  --peach: #f8b4a0;
+  --blush: #f9a8c0;
+  --navy: 30, 50, 90;        /* raw triplet for rgba() in components */
 }
 
 @layer base {
@@ -400,7 +462,8 @@ html[data-theme='nordic-frost'] {
   -webkit-mask-image: radial-gradient(80% 60% at 50% 0%, black 0%, transparent 75%);
 }
 html[data-theme='arctic-dawn'] .app-bg::before,
-html[data-theme='nordic-frost'] .app-bg::before {
+html[data-theme='nordic-frost'] .app-bg::before,
+html[data-theme='porcelain'] .app-bg::before {
   background-image: radial-gradient(rgba(22, 32, 46, 0.05) 1px, transparent 1px);
 }
 .app-bg .blob {
@@ -412,7 +475,8 @@ html[data-theme='nordic-frost'] .app-bg::before {
   background: var(--rose);
 }
 html[data-theme='arctic-dawn'] .app-bg .blob,
-html[data-theme='nordic-frost'] .app-bg .blob { opacity: 0.3; }
+html[data-theme='nordic-frost'] .app-bg .blob,
+html[data-theme='porcelain'] .app-bg .blob { opacity: 0.3; }
 .app-bg .blob-1 { width: 40vw; height: 40vw; left: -12vw; top: -14vw; animation: drift-a 28s ease-in-out infinite alternate; }
 .app-bg .blob-2 { width: 30vw; height: 30vw; right: -8vw; top: 20vh; animation: drift-b 34s ease-in-out infinite alternate; background: var(--mint); }
 .app-bg .blob-3 { width: 26vw; height: 26vw; left: 30vw; bottom: -14vw; animation: drift-c 30s ease-in-out infinite alternate; background: var(--accent-2); }
@@ -428,7 +492,8 @@ html[data-theme='nordic-frost'] .app-bg .blob { opacity: 0.3; }
   box-shadow: 0 10px 34px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 html[data-theme='arctic-dawn'] .glass,
-html[data-theme='nordic-frost'] .glass {
+html[data-theme='nordic-frost'] .glass,
+html[data-theme='porcelain'] .glass {
   box-shadow: 0 10px 34px rgba(22, 32, 46, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 .glass-strong {
@@ -439,7 +504,8 @@ html[data-theme='nordic-frost'] .glass {
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.09);
 }
 html[data-theme='arctic-dawn'] .glass-strong,
-html[data-theme='nordic-frost'] .glass-strong {
+html[data-theme='nordic-frost'] .glass-strong,
+html[data-theme='porcelain'] .glass-strong {
   box-shadow: 0 16px 48px rgba(22, 32, 46, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 .glass-subtle {
@@ -487,7 +553,8 @@ html[data-theme='nordic-frost'] .glass-strong {
   animation: shimmer 1.6s infinite;
 }
 html[data-theme='arctic-dawn'] .skeleton-shimmer::after,
-html[data-theme='nordic-frost'] .skeleton-shimmer::after {
+html[data-theme='nordic-frost'] .skeleton-shimmer::after,
+html[data-theme='porcelain'] .skeleton-shimmer::after {
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85), transparent);
 }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
@@ -580,3 +647,61 @@ html.tv-mode ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--ma
 @media (min-width: 2200px) {
   html { font-size: 17px; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   PORCELAIN — RIVR-grade light glassmorphism kit
+   Navy pill buttons · corner cutouts · airy display type
+   ══════════════════════════════════════════════════════════ */
+
+/* Navy pill CTA (the "Book Demo" pattern: icon circle + label) */
+.pill-navy {
+  background: rgba(var(--navy, 30, 50, 90), 0.82);
+  color: #fff;
+  transition: background-color 0.25s ease, transform 0.25s ease;
+}
+.pill-navy:hover { background: rgba(var(--navy, 30, 50, 90), 1); }
+.pill-navy .icon-circle {
+  background: rgba(255, 255, 255, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  transition: background-color 0.25s ease;
+}
+.pill-navy:hover .icon-circle { background: rgba(255, 255, 255, 0.32); }
+
+/* Frosted badge (HeroBadge pattern) — tint follows the artwork scrim
+   (white frost on light themes, charcoal frost on dark themes) */
+.badge-frost {
+  background: rgba(var(--hero-scrim), 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(var(--hero-scrim), 0.45);
+  color: var(--hero-ink);
+}
+
+/* Porcelain hover lift — soft navy shadow, no harsh glow */
+html[data-theme='porcelain'] .glass-hover:hover {
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 24px 60px rgba(30, 50, 90, 0.16), 0 4px 14px rgba(30, 50, 90, 0.06);
+}
+
+/* Display type (RIVR: light weights, tight tracking) */
+.display-hero {
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  text-wrap: balance;
+  color: var(--hero-ink);
+}
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mauve);
+}
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Corner-cutout mask plates (match --bg per theme) */
+.cutout-fill { fill: var(--bg); }

@@ -13,6 +13,7 @@ import { Hero } from '../media/hero'
 import { MediaRow } from '../media/media-row'
 import { ContinueRow } from '../media/continue-row'
 import { Chip } from '../ui-custom/glass'
+import { motion } from 'motion/react'
 import { useApp } from '@/lib/store'
 import { Compass, Flame } from 'lucide-react'
 
@@ -262,29 +263,35 @@ export function HomeView() {
       <MediaRow title="Popular TV Series" items={popTV} loading={loading} href="/tv" />
 
       {/* Discovery band: AI + genres */}
-      <section className="glass relative overflow-hidden rounded-3xl p-6 md:p-8">
-        <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full opacity-20 blur-3xl" style={{ background: 'var(--rose)' }} aria-hidden />
+      <section className="badge-frost relative overflow-hidden rounded-[1.5rem] p-6 md:rounded-[2rem] md:p-8">
+        <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full opacity-15 blur-3xl" style={{ background: 'var(--rose)' }} aria-hidden />
         <div className="flex flex-col items-start justify-between gap-5 md:flex-row md:items-center">
           <div className="max-w-md">
-            <h2 className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-ink md:text-2xl">
-              <Flame size={20} className="text-rose" /> Describe a mood, get a movie
+            <p className="eyebrow mb-1.5">Mood engine</p>
+            <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight text-ink md:text-2xl">
+              <Flame size={20} className="text-rose" aria-hidden /> Describe a mood, get a movie
             </h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-mauve">
+            <p className="mt-1.5 text-sm font-normal leading-relaxed text-mauve">
               AI Discovery understands phrases like &ldquo;mind-bending heist from the 2010s&rdquo; or
               &ldquo;cozy animated film for kids&rdquo; — and answers with real titles from the catalog.
             </p>
           </div>
-          <button
+          <motion.button
             onClick={() => setAiPanel(true)}
-            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-gradient-rose px-6 py-3 text-sm font-extrabold text-white shadow-xl transition-transform hover:scale-[1.03] active:scale-95"
-            style={{ boxShadow: '0 10px 40px var(--glow)' }}
+            className="pill-navy flex shrink-0 items-center rounded-full pl-2 pr-6 py-1.5"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            aria-label="Try AI Discovery"
           >
-            <Compass size={17} /> Try AI Discovery
-          </button>
+            <span className="icon-circle m-1 h-9 w-9">
+              <Compass size={16} className="text-white" aria-hidden />
+            </span>
+            <span className="text-sm font-medium">Try AI Discovery</span>
+          </motion.button>
         </div>
 
-        <div className="mt-6 border-t border-white/8 pt-5">
-          <h3 className="mb-3 text-xs font-extrabold uppercase tracking-[0.2em] text-mauve">Browse by genre</h3>
+        <div className="mt-6 border-t border-[rgba(var(--navy,30,50,90),0.1)] pt-5">
+          <h3 className="eyebrow mb-3">Browse by genre</h3>
           <div className="flex flex-wrap gap-2">
             {ALL_GENRES.slice(0, 14).map((g) => (
               <Chip key={g} onClick={() => navigate({ name: 'browse', kind: 'movie', genre: g })}>

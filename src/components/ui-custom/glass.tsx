@@ -68,19 +68,19 @@ export function SectionTitle({
   onWhy?: () => void
 }) {
   return (
-    <div className="mb-4 flex items-end justify-between gap-4">
-      <div>
-        <h2 className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-ink md:text-2xl">
-          <span className="hidden h-6 w-1 rounded-full bg-gradient-rose sm:block" aria-hidden />
+    <div className="mb-5 flex items-end justify-between gap-4">
+      <div className="min-w-0">
+        <p className="eyebrow mb-1.5" aria-hidden>{subtitle ?? 'Discover'}</p>
+        <h2 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-ink md:text-[28px]">
           {title}
           {onWhy && (
             <button
               onClick={onWhy}
-              className="glass-subtle rounded-full p-1.5 text-mauve transition-colors hover:text-ink"
+              className="badge-frost rounded-full p-1.5 text-mauve transition-colors hover:text-ink"
               aria-label="Why am I seeing this?"
               title="Why am I seeing this?"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
                 <path d="M9 9a3 3 0 1 1 4.5 2.6c-.9.55-1.5 1.1-1.5 2.4" />
                 <circle cx="12" cy="17.5" r="0.5" fill="currentColor" />
                 <circle cx="12" cy="12" r="10" strokeWidth="2" />
@@ -88,7 +88,6 @@ export function SectionTitle({
             </button>
           )}
         </h2>
-        {subtitle && <p className="mt-0.5 pl-0 text-sm text-mauve sm:pl-[13px]">{subtitle}</p>}
       </div>
       {action}
     </div>
@@ -108,10 +107,10 @@ export function Chip({
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-all',
+        'rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all',
         active
-          ? 'border-transparent bg-gradient-rose text-white shadow-md'
-          : 'border-white/10 bg-white/5 text-ink-soft hover:bg-white/10 hover:text-ink',
+          ? 'bg-primary text-primary-foreground shadow-md'
+          : 'glass-subtle text-ink-soft hover:text-ink',
         !onClick && 'pointer-events-none',
         className
       )}
@@ -125,11 +124,11 @@ export function RatingBadge({ rating, className }: { rating: number; className?:
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/45 px-2 py-0.5 text-[11px] font-extrabold text-white backdrop-blur-md',
+        'badge-frost inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular',
         className
       )}
     >
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="var(--rose)" stroke="none">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="#f5c518" stroke="none" aria-hidden>
         <path d="M12 2l2.9 6.26L21.5 9.3l-4.75 4.4 1.15 6.8L12 17.2l-5.9 3.3 1.15-6.8L2.5 9.3l6.6-1.04L12 2z" />
       </svg>
       {/* audit rule: missing ratings show "NR" — never a fake 0.0 */}
@@ -149,8 +148,8 @@ export function EmptyState({
   return (
     <GlassPanel variant="subtle" className="flex flex-col items-center gap-3 px-6 py-14 text-center">
       <div className="glass rounded-full p-4 text-rose">{icon}</div>
-      <h3 className="text-lg font-bold text-ink">{title}</h3>
-      <p className="max-w-sm text-sm text-mauve">{body}</p>
+      <h3 className="text-lg font-semibold tracking-tight text-ink">{title}</h3>
+      <p className="max-w-sm text-sm font-normal text-mauve">{body}</p>
       {action}
     </GlassPanel>
   )
