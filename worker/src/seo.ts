@@ -620,6 +620,10 @@ async function shellWithHead(env: Env, req: Request, patch: HeadPatch, cacheTag:
       /* edge copy is fine (version-keyed); browser must always revalidate */
       const h = new Headers(hit.headers)
       h.set('cache-control', 'public, max-age=0, must-revalidate')
+      /* deploy-safety invariant applies on cache HITS too: the zone must
+         never be allowed to store HTML, or a future deploy meets stale
+         shells referencing deleted chunk hashes (the refresh bug). */
+      h.set('cdn-cache-control', 'no-store')
       return new Response(hit.body, { status: hit.status, headers: h })
     }
   } catch {
