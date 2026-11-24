@@ -27,6 +27,7 @@
 import { handleMedia, nlCandidates } from './media-gateway'
 import { handleSEO } from './seo'
 import { DuoRoom } from './duo'
+import { kvWriteAllowed } from './kv-budget'
 
 export { DuoRoom } // Durable Object entrypoint (wrangler scans exports)
 
@@ -94,6 +95,35 @@ async function fetchWithTimeout(url: string, init: RequestInit, ms: number): Pro
   } finally {
     clearTimeout(timer)
   }
+}
+
+/* ── light per-IP rate limiter (isolate-local, zero-cost) ────────────────
+   Workers KV on the free plan has a hard 1,000 writes/day cap. Crawler
+   storms with unique query strings were exhausting the whole daily quota
+   within ~1-2 h (each miss = 1 KV read + 1 KV write). This limiter is
+   per-isolate (per colo) — deliberately NOT backed by KV, so guarding the
+   KV quota never costs KV operations. It only throttles abusive request
+   rates; normal browsing (a handful of calls per page) is far below it.  */
+const RATE_BUCKETS = new Map<string, { n: number; t: number }>()
+const RATE_WINDOW_MS = 60_000
+const RATE_MAX_ENTRIES = 20_000
+
+function rateLimited(req: Request, limit: number): boolean {
+  const ip = req.headers.get('cf-connecting-ip') ?? '?'
+  const now = Date.now()
+  /* cheap prune so long-lived isolates can't grow the map forever */
+  if (RATE_BUCKETS.size > RATE_MAX_ENTRIES) RATE_BUCKETS.clear()
+  const b = RATE_BUCKETS.get(ip)
+  if (!b || now - b.t > RATE_WINDOW_MS) {
+    RATE_BUCKETS.set(ip, { n: 1, t: now })
+    return false
+  }
+  b.n++
+  return b.n > limit
+}
+
+function tooMany(env: Env): Response {
+  return json(env, { ok: false, error: 'rate limited' }, 429, { 'retry-after': '60' })
 }
 
 /* ── TMDB proxy (edge-cached via Cache API) ──────────────────────────── */
@@ -248,6 +278,20 @@ async function omdb(req: Request, env: Env, search: string): Promise<Response> {
   const params = new URLSearchParams(search)
   params.delete('apikey')
   params.sort()
+
+  /* sanity gate — crawler junk with random query strings must never reach
+     OMDb (upstream quota) or the KV cache (1,000 writes/day free cap).
+     A lookup is valid only with a well-formed IMDb id or a bounded,
+     printable title query; anything else answers 400 without caching.   */
+  const imdbId = params.get('i') ?? ''
+  const title = (params.get('s') ?? params.get('t') ?? '').trim()
+  const validLookup =
+    /^tt\d{6,10}$/.test(imdbId) ||
+    (title.length > 0 && title.length <= 120 && !/[\u0000-\u001f\u007f]/.test(title))
+  if (!validLookup) {
+    return json(env, { ok: false, error: 'bad query' }, 400)
+  }
+
   const cacheKey = env.CACHE ? `omdb:${params.toString()}` : null
   if (cacheKey) {
     try {
@@ -278,7 +322,7 @@ async function omdb(req: Request, env: Env, search: string): Promise<Response> {
   /* only cache successful lookups (Response false/error payloads stay live) */
   try {
     const parsed = JSON.parse(body) as { Response?: string }
-    if (parsed.Response === 'True' && cacheKey && env.CACHE) {
+    if (parsed.Response === 'True' && cacheKey && env.CACHE && kvWriteAllowed()) {
       await env.CACHE.put(cacheKey, body, { expirationTtl: 604_800 })
     }
   } catch {
@@ -667,11 +711,13 @@ export default {
 
       if (pathname.startsWith('/api/tmdb/')) {
         if (req.method !== 'GET') return json(env, { ok: false, error: 'GET only' }, 405)
+        if (rateLimited(req, 60)) return tooMany(env)
         return await tmdb(req, env, pathname.replace('/api/tmdb', '') || '/', search)
       }
 
       if (pathname === '/api/omdb') {
         if (req.method !== 'GET') return json(env, { ok: false, error: 'GET only' }, 405)
+        if (rateLimited(req, 30)) return tooMany(env)
         return await omdb(req, env, search)
       }
 
@@ -700,6 +746,7 @@ export default {
 
       if (pathname === '/api/media') {
         if (req.method !== 'GET') return json(env, { ok: false, error: 'GET only' }, 405)
+        if (rateLimited(req, 60)) return tooMany(env)
         return await handleMedia(new URL(req.url), env)
       }
 
