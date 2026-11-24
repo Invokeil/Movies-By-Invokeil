@@ -28,6 +28,7 @@
    demo key is appended as api_key=. Keys are never logged.                 */
 
 import type { Env } from './worker'
+import { kvWriteAllowed } from './kv-budget'
 
 /* ── UnifiedMedia — mirrors src/lib/types.ts EXACTLY ─────────────────── */
 
@@ -311,8 +312,13 @@ async function cachedUpstream(
   }
 
   /* L2: persistent KV layer — global storage, "loaded once" semantics.
-     Engaged only for reusable payloads (ttl ≥ TTL_LIST): lists 6 h,
-     detail 7 d; search/mood skip KV by design.                          */
+     Engaged only for reusable payloads (ttl ≥ TTL_LIST): lists 24 h,
+     detail 7 d; search/mood skip KV by design.
+
+     KV write-budget note: the free plan allows 1,000 writes/day — lists
+     previously re-put every 6 h (~4 writes/day per list key even with
+     zero traffic); 24 h keeps content reasonably fresh (edge cache above
+     still refreshes lists every 5 min from upstream) at 1 write/day.    */
   const kv = env.CACHE
   const kvKey = kv && ttl >= TTL_LIST ? `media:${stripApiKey(upstreamUrl)}` : null
   if (kvKey) {
@@ -369,11 +375,12 @@ async function cachedUpstream(
     }
   }
 
-  /* persist to KV: lists 6 h, detail 7 d */
-  if (data !== null && kvKey && kv) {
+  /* persist to KV: lists 24 h, detail 7 d — writes additionally pass the
+     isolate-local kvWriteAllowed() budget (see kv-budget.ts) */
+  if (data !== null && kvKey && kv && kvWriteAllowed()) {
     try {
       await kv.put(kvKey, JSON.stringify(data), {
-        expirationTtl: ttl === TTL_DETAIL ? 604_800 : 21_600,
+        expirationTtl: ttl === TTL_DETAIL ? 604_800 : 86_400,
       })
     } catch {
       /* best-effort */
@@ -574,11 +581,17 @@ async function handleSearch(env: Env, sp: URLSearchParams): Promise<Response> {
   /* L1 persistent search cache — the FIRST user to search a title pays the
      TMDB round-trip; every later user (any device, any colo) gets the
      ranked results straight from KV. 24 h TTL, empty results never cached
-     (avoids poisoning a query while TMDB indexing lags).                  */
+     (avoids poisoning a query while TMDB indexing lags).
+
+     Engaged ONLY for sane, bounded queries: crawler junk (random long
+     strings) would burn daily KV reads AND the 1,000/day KV write cap on
+     every miss. Junk queries skip the KV layer entirely and go live.     */
   const kv = env.CACHE
-  const kvSearchKey = kv
-    ? `searchres:${typeOk ? `${typeOk}:` : ''}${q.toLowerCase().slice(0, 200)}`
-    : null
+  const cacheableQ = q.length <= 80 && !/[\u0000-\u001f\u007f]/.test(q)
+  const kvSearchKey =
+    kv && cacheableQ
+      ? `searchres:${typeOk ? `${typeOk}:` : ''}${q.toLowerCase().slice(0, 200)}`
+      : null
   if (kvSearchKey) {
     try {
       const stored = await kv.get<string>(kvSearchKey)
@@ -652,8 +665,9 @@ async function handleSearch(env: Env, sp: URLSearchParams): Promise<Response> {
   results.sort((a, b) => b.s - a.s || b.m.popularity - a.m.popularity)
   const final = results.slice(0, 24).map((r) => r.m)
 
-  /* persist ranked results to KV (24 h) — repeat searches never touch TMDB */
-  if (final.length > 0 && kvSearchKey && kv) {
+  /* persist ranked results to KV (24 h) — repeat searches never touch TMDB;
+     writes additionally pass the isolate-local kvWriteAllowed() budget */
+  if (final.length > 0 && kvSearchKey && kv && kvWriteAllowed()) {
     try {
       await kv.put(kvSearchKey, JSON.stringify(final), { expirationTtl: 86_400 })
     } catch {
