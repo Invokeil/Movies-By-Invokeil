@@ -41,11 +41,19 @@
   /* Custom domain (zone must exist in the Cloudflare account) */
   "routes": [ { "pattern": "movies.invokeil.cfd", "custom_domain": true } ],
 
-  /* Persistent metadata cache (KV) — every /api/media response is stored
-     here after first load and served globally from CF storage.            */
+  /* KV cache DISABLED (2026-11-25): crawler storms kept burning the free
+     plan's 1,000 writes/day KV quota even with the per-IP rate limiter and
+     isolate-local write budget (the storm spread over many isolates —
+     2026-11-25 05:00–07:00 UTC burned ~1,000 puts again). With no binding,
+     env.CACHE is undefined at runtime and every KV read/write in the code
+     (worker.ts omdb, media-gateway lists/search — all guarded) silently
+     skips. Serving continues via the L1 edge cache (caches.default) and
+     upstream TMDB. KV usage for this worker is now zero by construction.
+     To re-enable: uncomment and redeploy.
   "kv_namespaces": [
     { "binding": "CACHE", "id": "6097092133c6404a85c2a0b1ea89e315" }
   ],
+  */
 
   /* Image store (R2) — every poster/backdrop/cast photo fetched once via
      /api/img is persisted here and served from CF forever after.          */
